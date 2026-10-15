@@ -75,7 +75,7 @@ async function upgradeLegacy(legacyKey,pass,filesSrc){
 }
 
 /* ---------- lock screen ---------- */
-let mode="unlock";
+let mode="unlock",failCount=0;
 async function boot(){
   if(!window.crypto||!crypto.subtle||!window.indexedDB){$("lockSub").textContent="This browser can't run Kč Ledger securely. Open it in Safari or Chrome over https.";return}
   let rec=null;try{rec=await idbGet()}catch(e){}
@@ -97,7 +97,7 @@ $("lockForm").addEventListener("submit",async e=>{
       await persist();try{await navigator.storage?.persist?.()}catch(_){}
     }else{
       h.textContent="Unlocking…";const rec=await idbGet();let o;
-      try{o=await openWithPass(rec,p1)}catch(_){h.textContent="That passcode didn't work. Try again.";h.className="hint err";$("pass1").select();return}
+      try{o=await openWithPass(rec,p1)}catch(_){failCount++;h.textContent=failCount<2?"That passcode didn't work. Try again.":"That passcode didn't work. If you're sure it's right, close the app completely and reopen it: it may still be finishing an update. Your data is safe.";h.className="hint err";$("pass1").select();return}
       if(o.legacyKey){h.textContent="Upgrading your ledger's encryption…";const u=await upgradeLegacy(o.legacyKey,p1);await startSession(u.raw,u.k,o.docs,u.keys);await persist()}
       else await startSession(o.raw,o.key,o.docs,rec.keys);
     }
@@ -834,6 +834,6 @@ function findShotTwin(i){for(const {k,i:x} of allItems())if(x.src==="shot"&&x.ty
 
 /* ---------- start ---------- */
 let rz;addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(renderCharts,150)});
-if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(()=>{});
+if("serviceWorker" in navigator&&(location.protocol==="https:"||location.hostname==="localhost"))navigator.serviceWorker.register("sw.js",{updateViaCache:"none"}).catch(()=>{});
 boot();
 })();

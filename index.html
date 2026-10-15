@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="app.css?v=4">
 <title>Kč Ledger</title>
 </head>
 <body>
@@ -34,6 +34,7 @@
       <button class="primary" id="lockBtn" type="submit">Unlock</button>
       <p class="hint" id="lockHint"></p>
     </form>
+    <p class="fine" id="lockVer">Kč Ledger · version 4</p>
     <p class="fine" id="lockFine" hidden>Your entries are encrypted on this phone. Nobody, including the app's host, can read them. There is no passcode reset: if you forget it, only a backup can bring your data back.</p>
   </div>
 </main>
@@ -308,7 +309,7 @@
   <div class="viewer-bar"><button class="icon-btn" id="viewNext">Next image</button><span class="spacer"></span><button class="danger" id="viewDel">Remove image</button></div>
 </div>
 <div id="toast" class="toast" role="status" hidden></div>
-<script src="rbimport.js"></script>
-<script src="app.js"></script>
+<script src="rbimport.js?v=4"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>
