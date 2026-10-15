@@ -20,6 +20,14 @@ Open it from the home-screen icon, choose a passcode, then go to **Settings → 
 
 Export **Movements** as CSV from Raiffeisen for both accounts, then **Settings → Import** and select both files together. Save an encrypted backup afterwards (**Settings → Backup**).
 
+## Screenshots and receipt images
+
+On the **Entries** tab, **Read a screenshot** turns a bank-app screenshot or a receipt into entries for you to check before saving. Text recognition runs on the phone using the files in `ocr/`; the first use loads about 10 MB, after which it works offline. Images you keep are compressed and encrypted like the rest of your data, and are included in encrypted backups.
+
+## Goals, bills and Face ID
+
+The **Goals** tab tracks savings goals and your monthly investing split. Recurring bills are set up in **Settings → Recurring bills** and are marked paid when a matching entry appears. **Settings → Security** turns on Face ID unlock (iOS 18 or later); your passcode always keeps working. Exchange rates update once a day from the European Central Bank reference rate (via frankfurter.dev); no personal data is sent.
+
 ## Updating the app
 
 Upload the changed files to the repository and change `VERSION` in `sw.js` so phones pick up the new version.

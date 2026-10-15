@@ -58,7 +58,7 @@ function rbToItems(text,opts){
     }
     else if(/accrued interest/i.test(ttype)){type="income";cat="Interest";label=note||"Interest"}
     else if(/interest tax/i.test(ttype)){type="income";cat="Interest";label="Withholding tax on interest"}
-    else if(amt>0){type="income";cat=/vsb|všb/i.test(hay)?"Salary":"Other income";label=cntName||note||ttype;if(/reward/i.test(ttype))label="RB reward"}
+    else if(amt>0){type="income";cat=/vsb|všb/i.test(hay)?"Salary":/\bwise\b|transferwise/i.test(hay)?"Transfer from Australia":"Other income";label=cntName||note||ttype;if(/reward/i.test(ttype))label="RB reward"}
     else{
       type="expense";const k=rbKey(mer,msg);
       if(opts.rules&&opts.rules[k])cat=opts.rules[k];

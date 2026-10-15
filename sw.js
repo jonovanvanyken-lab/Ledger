@@ -1,5 +1,5 @@
 // Offline cache for the app shell. Bump VERSION when any file changes.
-const VERSION = "kc-ledger-v1";
+const VERSION = "kc-ledger-v3";
 const FILES = ["./", "index.html", "app.css", "app.js", "rbimport.js", "manifest.webmanifest",
   "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png", "icons/apple-touch-icon.png"];
 

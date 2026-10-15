@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://api.frankfurter.dev https://api.frankfurter.app; worker-src 'self' blob:; manifest-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#1d3d8c">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -23,6 +23,7 @@
   <div class="lock-card">
     <div class="brand"><span class="mark">Kč</span><h1>Kč Ledger</h1></div>
     <p class="lock-sub" id="lockSub">Checking this phone…</p>
+    <button class="primary" id="bioBtn" type="button" hidden>Unlock with Face ID</button>
     <form id="lockForm" autocomplete="off" hidden>
       <label class="label" for="pass1" id="pass1Label">Passcode</label>
       <input id="pass1" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" minlength="6" required>
@@ -33,7 +34,7 @@
       <button class="primary" id="lockBtn" type="submit">Unlock</button>
       <p class="hint" id="lockHint"></p>
     </form>
-    <p class="fine" id="lockFine" hidden>Your entries are encrypted on this phone with your passcode. Nobody, including the app's host, can read them. There is no passcode reset: if you forget it, only a backup can bring your data back.</p>
+    <p class="fine" id="lockFine" hidden>Your entries are encrypted on this phone. Nobody, including the app's host, can read them. There is no passcode reset: if you forget it, only a backup can bring your data back.</p>
   </div>
 </main>
 
@@ -44,34 +45,92 @@
     <span class="m" id="monthLabel">—</span>
     <button class="icon-btn" id="nextM" aria-label="Next month">›</button>
     <span class="spacer"></span>
+    <button class="icon-btn cur-btn" id="curBtn" aria-label="Show amounts in Australian dollars">Kč</button>
     <button class="icon-btn" id="hideBtn" aria-pressed="false" aria-label="Hide amounts">Hide</button>
     <button class="icon-btn" id="lockNow" aria-label="Lock now">Lock</button>
   </header>
 
+  <!-- OVERVIEW -->
   <section class="tab" id="tab-overview">
+    <div id="banners" class="banners"></div>
+    <div id="recap"></div>
     <div class="summary">
       <div class="kpi"><span class="label">Spent</span><span class="big amt" id="kSpent">—</span><span class="sub"><span class="amt" id="kSpentOf">—</span> <span class="pill" id="kSpentPill">—</span></span></div>
       <div class="kpi"><span class="label">Left to spend</span><span class="big amt" id="kLeft">—</span><span class="sub amt" id="kLeftSub">—</span></div>
       <div class="kpi"><span class="label">Saved &amp; invested</span><span class="big amt" id="kSaved">—</span><span class="sub amt" id="kSavedOf">—</span></div>
-      <div class="kpi"><span class="label">Income</span><span class="big amt" id="kIncome">—</span><span class="sub" id="kIncomeSub">this month</span></div>
+      <div class="kpi"><span class="label">Income</span><span class="big amt" id="kIncome">—</span><span class="sub amt" id="kIncomeSub">earned this month</span></div>
     </div>
+    <button class="oneoff-strip" id="oneoffStrip" hidden></button>
+
     <div class="panel">
-      <h2>Budget vs actual</h2>
-      <div class="bars" id="bars"></div>
-      <h3>Savings goals</h3>
-      <div class="bars" id="sbars"></div>
+      <div class="panel-head"><h2>Spending pace</h2><span class="pill" id="paceNote"></span></div>
+      <div id="pace" class="chart"></div>
+      <div class="legend"><span><i class="sw sw-sp"></i>Spent so far</span><span><i class="sw sw-plan"></i>Plan, with bills on their days</span></div>
     </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Bills this month</h2><button class="link" id="billsEdit">Edit bills</button></div>
+      <ul class="bills" id="bills"></ul>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Budget vs actual</h2><span class="small muted">Tap a category to see its entries</span></div>
+      <div class="bars" id="bars"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Where it went</h2>
+      <div class="donut-wrap"><div id="donut" class="donut"></div><ul id="donutLegend" class="donut-legend"></ul></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Day by day</h2><span class="small muted">Tap a day</span></div>
+      <div id="heat" class="heat"></div>
+      <div id="dayList" class="day-list"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Top places</h2><span class="small muted">Last 3 months</span></div>
+      <ol id="merchants" class="merchants"></ol>
+    </div>
+
     <div class="panel">
       <div class="panel-head"><h2>Last six months</h2>
-        <div class="legend"><span><i class="sw sw-sp"></i>Spent</span><span><i class="sw sw-sv"></i>Saved</span><span><i class="sw sw-bud"></i>Budget</span></div>
+        <div class="legend"><span><i class="sw sw-sp"></i>Spent</span><span><i class="sw sw-one"></i>One-off</span><span><i class="sw sw-sv"></i>Saved</span></div>
       </div>
-      <div id="trend" class="trend"></div>
+      <div id="trend" class="chart"></div>
     </div>
   </section>
 
+  <!-- ENTRIES -->
   <section class="tab" id="tab-entries" hidden>
-    <div class="panel">
-      <div class="panel-head"><h2>Add an entry</h2><button class="link" id="importBtn2">Import bank CSV</button></div>
+    <div class="quick">
+      <button class="quick-btn" id="shotBtn"><span class="qi" aria-hidden="true">▣</span><span><b>Read a screenshot</b><small>Bank app, Revolut or a receipt</small></span></button>
+      <button class="quick-btn" id="importBtn2"><span class="qi" aria-hidden="true">≡</span><span><b>Import bank CSV</b><small>Raiffeisen Movements export</small></span></button>
+    </div>
+    <input type="file" id="shotFile" accept="image/*" hidden>
+    <input type="file" id="attachFile" accept="image/*" hidden>
+
+    <div class="panel" id="shotPanel" hidden>
+      <div class="panel-head"><h2>From your screenshot</h2></div>
+      <div class="shot-layout">
+        <img id="shotPreview" class="shot-preview" alt="Your screenshot">
+        <div class="shot-main">
+          <p class="hint" id="shotStatus" role="status"></p>
+          <div id="shotRows" class="shot-rows"></div>
+          <div id="shotActions" hidden>
+            <button class="link" id="shotAddRow" type="button">+ Add a row</button>
+            <label class="check" for="shotKeep"><input type="checkbox" id="shotKeep" checked> Keep the screenshot with these entries</label>
+            <div class="btnrow"><button class="primary" id="shotSave" type="button">Save ticked entries</button><button class="icon-btn" id="shotCancel" type="button">Cancel</button></div>
+          </div>
+          <details id="shotRawWrap" class="sub-sec" hidden><summary>Text it read</summary><pre id="shotRaw" class="raw"></pre></details>
+        </div>
+      </div>
+      <p class="fine">The screenshot is read on this phone. It isn't sent anywhere.</p>
+    </div>
+
+    <details class="panel add-panel" id="addPanel">
+      <summary><h2>Add an entry</h2><span class="plus" aria-hidden="true">+</span></summary>
       <div class="seg" role="group" aria-label="Entry type">
         <button type="button" data-type="expense" aria-pressed="true">Spent</button>
         <button type="button" data-type="saving" aria-pressed="false">Saved</button>
@@ -87,16 +146,47 @@
           <div class="field"><label class="label" for="fNote">Note</label><input id="fNote" maxlength="80" placeholder="Albert, Lidl, tram pass…"></div>
           <div class="field"><label class="label" for="fDate">Date</label><input id="fDate" type="date" required></div>
         </div>
+        <label class="check" for="fOneoff"><input type="checkbox" id="fOneoff"> One-off (keep out of the monthly budget)</label>
+        <div class="field"><span class="label">Receipt image (optional)</span>
+          <div class="file-pick"><button type="button" class="icon-btn" id="fReceiptBtn">Choose image</button><span class="small muted" id="fReceiptName"></span></div>
+          <input type="file" id="fReceipt" accept="image/*" hidden></div>
         <button class="primary" id="saveBtn" type="submit">Add expense</button>
         <p class="hint" id="formHint"></p>
       </form>
-    </div>
+    </details>
+
     <div class="panel">
-      <div class="panel-head"><h2>Entries</h2><span class="muted small" id="entryCount"></span></div>
+      <div class="filters">
+        <input id="q" type="search" placeholder="Search entries" aria-label="Search entries" autocomplete="off">
+        <div class="filter-row">
+          <select id="fltCat" aria-label="Filter by category"></select>
+          <label class="chip"><input type="checkbox" id="fltAll"> All months</label>
+        </div>
+      </div>
+      <div class="panel-head"><h2 id="entriesTitle">Entries</h2><span class="muted small" id="entryCount"></span></div>
       <ul class="ledger" id="ledger"></ul>
     </div>
   </section>
 
+  <!-- GOALS -->
+  <section class="tab" id="tab-goals" hidden>
+    <div class="panel">
+      <div class="panel-head"><h2>Goals</h2><button class="link" id="goalAdd">+ New goal</button></div>
+      <div id="goals" class="goals"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>Investing</h2><span class="small muted" id="invNote"></span></div>
+      <div class="inv-kpis">
+        <div><span class="label">This month</span><span class="big amt" id="invMonth">—</span><span class="sub amt" id="invMonthOf"></span></div>
+        <div><span class="label">Invested in total</span><span class="big amt" id="invTotal">—</span><span class="sub" id="invSince"></span></div>
+      </div>
+      <div class="inv-split" id="invSplit"></div>
+      <div id="invChart" class="chart"></div>
+      <div class="legend"><span><i class="sw sw-sv"></i>Invested</span><span><i class="sw sw-plan"></i>Monthly target</span></div>
+    </div>
+  </section>
+
+  <!-- ACCOUNTS -->
   <section class="tab" id="tab-accounts" hidden>
     <div class="panel">
       <div class="panel-head"><h2>Accounts &amp; savings</h2></div>
@@ -110,8 +200,22 @@
       </form>
       <p class="fine">Names and balances only. Never store account numbers or logins here.</p>
     </div>
+    <div class="panel">
+      <h2>Savings over time</h2>
+      <div id="netChart" class="chart"></div>
+      <p class="fine">A point is added each day you update a balance.</p>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>From Australia</h2><span class="small muted">Wise transfers into your Czech account</span></div>
+      <div class="inv-kpis">
+        <div><span class="label">This month</span><span class="big amt" id="auMonth">—</span></div>
+        <div><span class="label">Last 12 months</span><span class="big amt" id="auYear">—</span></div>
+      </div>
+      <div id="auChart" class="chart"></div>
+    </div>
   </section>
 
+  <!-- SETTINGS -->
   <section class="tab" id="tab-settings" hidden>
     <div class="panel">
       <h2>Import</h2>
@@ -121,7 +225,7 @@
     </div>
     <div class="panel">
       <h2>Backup</h2>
-      <p class="small muted">Your data lives only on this phone. Save an encrypted backup to iCloud Drive or Google Drive after each import. It opens with your current passcode.</p>
+      <p class="small muted">Your data lives only on this phone. Save an encrypted backup to iCloud Drive after each import. It opens with your passcode. <span id="lastBackup"></span></p>
       <div class="btnrow"><button class="primary" id="backupBtn">Save encrypted backup</button><button class="icon-btn" id="restoreBtn">Restore a backup</button><button class="icon-btn" id="csvBtn">Export CSV</button></div>
       <input type="file" id="restoreFile" accept=".json,application/json" hidden>
       <div id="restoreWrap" class="fields" hidden>
@@ -132,18 +236,37 @@
       <p class="hint" id="backupHint"></p>
     </div>
     <div class="panel">
-      <h2>Budget</h2>
-      <div class="label sec">Monthly spending (CZK)</div><div class="set-grid" id="setBudget"></div>
-      <div class="label sec">Monthly savings targets (CZK)</div><div class="set-grid" id="setSave"></div>
-      <div class="label sec">Exchange rates for new entries</div>
+      <h2>Exchange rates</h2>
+      <label class="check" for="autoRates"><input type="checkbox" id="autoRates"> Update daily from the European Central Bank reference rate</label>
+      <p class="fine" id="ratesInfo"></p>
       <div class="set-grid">
         <div class="field"><label for="rAUD" class="small muted">1 AUD = … CZK</label><input id="rAUD" inputmode="decimal"></div>
         <div class="field"><label for="rEUR" class="small muted">1 EUR = … CZK</label><input id="rEUR" inputmode="decimal"></div>
       </div>
+      <div class="btnrow"><button class="icon-btn" id="ratesNow">Update now</button><button class="primary" id="ratesSave" disabled>Save rates</button></div>
+      <p class="fine">Checking rates contacts one public site and sends nothing about you or your money.</p>
+    </div>
+    <div class="panel">
+      <h2>Budget</h2>
+      <div class="label sec">Monthly spending (CZK)</div><div class="set-grid" id="setBudget"></div>
+      <div class="label sec">Monthly savings targets (CZK)</div><div class="set-grid" id="setSave"></div>
+      <div class="label sec">How your monthly investing is split (CZK)</div>
+      <div class="set-grid">
+        <div class="field"><label for="invShort" class="small muted">For around 2 years</label><input id="invShort" inputmode="decimal" class="amt"></div>
+        <div class="field"><label for="invLong" class="small muted">Long-term (5+ years)</label><input id="invLong" inputmode="decimal" class="amt"></div>
+      </div>
       <div class="btnrow"><button class="primary" id="saveSettings" disabled>Save changes</button><span class="hint" id="setHint"></span></div>
+    </div>
+    <div class="panel" id="billsPanel">
+      <h2>Recurring bills</h2>
+      <p class="small muted">Bills are marked paid when an entry with a matching word and a similar amount appears that month.</p>
+      <div id="billsEditor" class="bills-editor"></div>
+      <div class="btnrow"><button class="icon-btn" id="billAdd">+ Add a bill</button><button class="primary" id="billsSave" disabled>Save bills</button></div>
     </div>
     <div class="panel">
       <h2>Security</h2>
+      <div class="bio-row"><div><b>Face ID unlock</b><p class="small muted" id="bioInfo">Unlock with Face ID instead of typing your passcode. Your passcode keeps working too.</p></div>
+        <button class="icon-btn" id="bioToggle">Turn on</button></div>
       <div class="field"><label class="label" for="autoLock">Lock automatically after</label>
         <select id="autoLock"><option value="1">1 minute away</option><option value="5">5 minutes away</option><option value="15">15 minutes away</option></select></div>
       <details class="sub-sec"><summary>Change passcode</summary>
@@ -156,7 +279,7 @@
         </form>
       </details>
       <details class="sub-sec"><summary>Erase everything on this phone</summary>
-        <p class="small muted">Deletes every entry, account and setting from this phone. Save a backup first if you may want them back.</p>
+        <p class="small muted">Deletes every entry, account, image and setting from this phone. Save a backup first if you may want them back.</p>
         <button class="danger" id="eraseBtn">Erase all data</button>
       </details>
     </div>
@@ -165,11 +288,25 @@
   <nav class="tabbar" aria-label="Sections">
     <button data-tab="overview" aria-current="page">Overview</button>
     <button data-tab="entries">Entries</button>
+    <button data-tab="goals">Goals</button>
     <button data-tab="accounts">Accounts</button>
     <button data-tab="settings">Settings</button>
   </nav>
 </div>
 
+<!-- Bottom sheet used by the entry and goal editors -->
+<div id="sheet" class="sheet-wrap" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet-head"><h2 id="sheetTitle">Edit</h2><button class="icon-btn" id="sheetClose">Close</button></div>
+    <div id="sheetBody" class="sheet-body"></div>
+  </div>
+</div>
+
+<div id="viewer" class="viewer" role="dialog" aria-modal="true" aria-label="Attached image" hidden>
+  <div class="viewer-bar"><span id="viewCap" class="viewer-cap"></span><button class="icon-btn" id="viewClose">Close</button></div>
+  <div class="viewer-img"><img id="viewImg" alt="Attached image"></div>
+  <div class="viewer-bar"><button class="icon-btn" id="viewNext">Next image</button><span class="spacer"></span><button class="danger" id="viewDel">Remove image</button></div>
+</div>
 <div id="toast" class="toast" role="status" hidden></div>
 <script src="rbimport.js"></script>
 <script src="app.js"></script>
