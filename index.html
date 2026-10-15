@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#1d3d8c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Kč Ledger">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="app.css">
+<title>Kč Ledger</title>
+</head>
+<body>
+
+<!-- Lock screen -->
+<main id="lock" class="lock">
+  <div class="lock-card">
+    <div class="brand"><span class="mark">Kč</span><h1>Kč Ledger</h1></div>
+    <p class="lock-sub" id="lockSub">Checking this phone…</p>
+    <form id="lockForm" autocomplete="off" hidden>
+      <label class="label" for="pass1" id="pass1Label">Passcode</label>
+      <input id="pass1" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" minlength="6" required>
+      <div id="pass2Wrap" hidden>
+        <label class="label" for="pass2">Type it again</label>
+        <input id="pass2" type="password" autocomplete="off" autocapitalize="off" spellcheck="false">
+      </div>
+      <button class="primary" id="lockBtn" type="submit">Unlock</button>
+      <p class="hint" id="lockHint"></p>
+    </form>
+    <p class="fine" id="lockFine" hidden>Your entries are encrypted on this phone with your passcode. Nobody, including the app's host, can read them. There is no passcode reset: if you forget it, only a backup can bring your data back.</p>
+  </div>
+</main>
+
+<!-- App -->
+<div id="app" hidden>
+  <header class="top">
+    <button class="icon-btn" id="prevM" aria-label="Previous month">‹</button>
+    <span class="m" id="monthLabel">—</span>
+    <button class="icon-btn" id="nextM" aria-label="Next month">›</button>
+    <span class="spacer"></span>
+    <button class="icon-btn" id="hideBtn" aria-pressed="false" aria-label="Hide amounts">Hide</button>
+    <button class="icon-btn" id="lockNow" aria-label="Lock now">Lock</button>
+  </header>
+
+  <section class="tab" id="tab-overview">
+    <div class="summary">
+      <div class="kpi"><span class="label">Spent</span><span class="big amt" id="kSpent">—</span><span class="sub"><span class="amt" id="kSpentOf">—</span> <span class="pill" id="kSpentPill">—</span></span></div>
+      <div class="kpi"><span class="label">Left to spend</span><span class="big amt" id="kLeft">—</span><span class="sub amt" id="kLeftSub">—</span></div>
+      <div class="kpi"><span class="label">Saved &amp; invested</span><span class="big amt" id="kSaved">—</span><span class="sub amt" id="kSavedOf">—</span></div>
+      <div class="kpi"><span class="label">Income</span><span class="big amt" id="kIncome">—</span><span class="sub" id="kIncomeSub">this month</span></div>
+    </div>
+    <div class="panel">
+      <h2>Budget vs actual</h2>
+      <div class="bars" id="bars"></div>
+      <h3>Savings goals</h3>
+      <div class="bars" id="sbars"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>Last six months</h2>
+        <div class="legend"><span><i class="sw sw-sp"></i>Spent</span><span><i class="sw sw-sv"></i>Saved</span><span><i class="sw sw-bud"></i>Budget</span></div>
+      </div>
+      <div id="trend" class="trend"></div>
+    </div>
+  </section>
+
+  <section class="tab" id="tab-entries" hidden>
+    <div class="panel">
+      <div class="panel-head"><h2>Add an entry</h2><button class="link" id="importBtn2">Import bank CSV</button></div>
+      <div class="seg" role="group" aria-label="Entry type">
+        <button type="button" data-type="expense" aria-pressed="true">Spent</button>
+        <button type="button" data-type="saving" aria-pressed="false">Saved</button>
+        <button type="button" data-type="income" aria-pressed="false">Income</button>
+      </div>
+      <form id="entryForm" class="fields" autocomplete="off">
+        <div class="row2">
+          <div class="field"><label class="label" for="fAmt">Amount</label><input id="fAmt" inputmode="decimal" placeholder="e.g. 485" required></div>
+          <div class="field"><label class="label" for="fCur">Currency</label><select id="fCur"><option>CZK</option><option>AUD</option><option>EUR</option></select></div>
+        </div>
+        <div class="field"><label class="label" for="fCat">Category</label><select id="fCat"></select></div>
+        <div class="row2 row2-date">
+          <div class="field"><label class="label" for="fNote">Note</label><input id="fNote" maxlength="80" placeholder="Albert, Lidl, tram pass…"></div>
+          <div class="field"><label class="label" for="fDate">Date</label><input id="fDate" type="date" required></div>
+        </div>
+        <button class="primary" id="saveBtn" type="submit">Add expense</button>
+        <p class="hint" id="formHint"></p>
+      </form>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>Entries</h2><span class="muted small" id="entryCount"></span></div>
+      <ul class="ledger" id="ledger"></ul>
+    </div>
+  </section>
+
+  <section class="tab" id="tab-accounts" hidden>
+    <div class="panel">
+      <div class="panel-head"><h2>Accounts &amp; savings</h2></div>
+      <div class="total"><span class="label">Total across accounts</span><span class="big amt" id="kNet">—</span><span class="sub" id="kNetSub"></span></div>
+      <div class="acct-list" id="accts"></div>
+      <form class="addacct" id="acctForm" autocomplete="off">
+        <input id="aName" maxlength="40" placeholder="Name, e.g. ubank savings" aria-label="Account name" required>
+        <input id="aBal" inputmode="decimal" placeholder="Balance" aria-label="Balance" required>
+        <select id="aCur" aria-label="Currency"><option>CZK</option><option>AUD</option><option>EUR</option></select>
+        <button class="icon-btn" type="submit">Add</button>
+      </form>
+      <p class="fine">Names and balances only. Never store account numbers or logins here.</p>
+    </div>
+  </section>
+
+  <section class="tab" id="tab-settings" hidden>
+    <div class="panel">
+      <h2>Import</h2>
+      <p class="small muted">Raiffeisenbank Movements CSVs (select every account's file together so transfers between them are left out), or the starter file from Claude.</p>
+      <button class="icon-btn wide" id="importBtn">Choose files to import</button>
+      <input type="file" id="importFile" accept=".csv,.json,text/csv,application/json" multiple hidden>
+    </div>
+    <div class="panel">
+      <h2>Backup</h2>
+      <p class="small muted">Your data lives only on this phone. Save an encrypted backup to iCloud Drive or Google Drive after each import. It opens with your current passcode.</p>
+      <div class="btnrow"><button class="primary" id="backupBtn">Save encrypted backup</button><button class="icon-btn" id="restoreBtn">Restore a backup</button><button class="icon-btn" id="csvBtn">Export CSV</button></div>
+      <input type="file" id="restoreFile" accept=".json,application/json" hidden>
+      <div id="restoreWrap" class="fields" hidden>
+        <label class="label" for="restorePass">Passcode of that backup</label>
+        <input id="restorePass" type="password" autocomplete="off">
+        <div class="btnrow"><button class="primary" id="restoreGo">Restore</button><button class="icon-btn" id="restoreCancel">Cancel</button></div>
+      </div>
+      <p class="hint" id="backupHint"></p>
+    </div>
+    <div class="panel">
+      <h2>Budget</h2>
+      <div class="label sec">Monthly spending (CZK)</div><div class="set-grid" id="setBudget"></div>
+      <div class="label sec">Monthly savings targets (CZK)</div><div class="set-grid" id="setSave"></div>
+      <div class="label sec">Exchange rates for new entries</div>
+      <div class="set-grid">
+        <div class="field"><label for="rAUD" class="small muted">1 AUD = … CZK</label><input id="rAUD" inputmode="decimal"></div>
+        <div class="field"><label for="rEUR" class="small muted">1 EUR = … CZK</label><input id="rEUR" inputmode="decimal"></div>
+      </div>
+      <div class="btnrow"><button class="primary" id="saveSettings" disabled>Save changes</button><span class="hint" id="setHint"></span></div>
+    </div>
+    <div class="panel">
+      <h2>Security</h2>
+      <div class="field"><label class="label" for="autoLock">Lock automatically after</label>
+        <select id="autoLock"><option value="1">1 minute away</option><option value="5">5 minutes away</option><option value="15">15 minutes away</option></select></div>
+      <details class="sub-sec"><summary>Change passcode</summary>
+        <form id="passForm" class="fields" autocomplete="off">
+          <input id="pOld" type="password" placeholder="Current passcode" aria-label="Current passcode" autocomplete="off">
+          <input id="pNew" type="password" placeholder="New passcode (6+ characters)" aria-label="New passcode" autocomplete="off">
+          <input id="pNew2" type="password" placeholder="New passcode again" aria-label="New passcode again" autocomplete="off">
+          <button class="primary" type="submit">Change passcode</button>
+          <p class="hint" id="passHint"></p>
+        </form>
+      </details>
+      <details class="sub-sec"><summary>Erase everything on this phone</summary>
+        <p class="small muted">Deletes every entry, account and setting from this phone. Save a backup first if you may want them back.</p>
+        <button class="danger" id="eraseBtn">Erase all data</button>
+      </details>
+    </div>
+  </section>
+
+  <nav class="tabbar" aria-label="Sections">
+    <button data-tab="overview" aria-current="page">Overview</button>
+    <button data-tab="entries">Entries</button>
+    <button data-tab="accounts">Accounts</button>
+    <button data-tab="settings">Settings</button>
+  </nav>
+</div>
+
+<div id="toast" class="toast" role="status" hidden></div>
+<script src="rbimport.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
