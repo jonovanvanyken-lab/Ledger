@@ -146,6 +146,7 @@
       </div>
       <div id="trend" class="chart"></div>
     </div>
+    <button class="icon-btn wide" id="yearBtn" type="button">Year in review</button>
   </section>
 
   <!-- ENTRIES -->
@@ -221,6 +222,15 @@
     <div class="panel">
       <div class="panel-head"><h2>Goals</h2><button class="link" id="goalAdd">+ New goal</button></div>
       <div id="goals" class="goals"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>Owed &amp; owing</h2><button class="link" id="debtAdd" type="button">+ Add</button></div>
+      <div class="inv-kpis">
+        <div><span class="label">Owed to you</span><span class="big amt pos" id="debtIn">—</span></div>
+        <div><span class="label">You owe</span><span class="big amt" id="debtOut">—</span></div>
+      </div>
+      <div id="debtList" class="debts"></div>
+      <p class="fine">Just for keeping track. It doesn't affect your budget or the Health face.</p>
     </div>
     <div class="panel" id="investPanel" hidden>
       <div class="panel-head"><h2>Investing</h2><span class="small muted" id="invNote"></span></div>
