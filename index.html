@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="app.css?v=9">
+<link rel="stylesheet" href="app.css?v=10">
 <title>Kč Ledger</title>
 </head>
 <body>
@@ -38,7 +38,7 @@
       <button class="primary" id="lockBtn" type="submit">Unlock</button>
       <p class="hint" id="lockHint"></p>
     </form>
-    <p class="fine" id="lockVer">Kč Ledger · version 9</p>
+    <p class="fine" id="lockVer">Kč Ledger · version 10</p>
     <p class="fine" id="lockFine" hidden>Your entries are encrypted on this device. Nobody, including the app's host, can read them. There is no passcode reset: if you forget it, only a backup can bring your data back.</p>
   </div>
 </main>
@@ -84,6 +84,11 @@
       <span class="hsub" id="hPerDaySub"></span>
       <div class="hcompare" id="hCompare"></div>
     </div>
+    <div class="panel" id="streakPanel" hidden>
+      <div class="panel-head"><h2>Streak</h2><span class="pill" id="streakPill"></span></div>
+      <div class="streak" id="streakDots" aria-hidden="true"></div>
+      <p class="small muted" id="streakText"></p>
+    </div>
     <div class="panel">
       <h2>How it's worked out</h2>
       <dl class="hsum" id="hSum"></dl>
@@ -107,6 +112,11 @@
       <div class="kpi"><span class="label">Income</span><span class="big amt" id="kIncome">—</span><span class="sub amt" id="kIncomeSub">—</span></div>
     </div>
     <button class="oneoff-strip" id="oneoffStrip" hidden></button>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Where the money went</h2><span class="small muted" id="flowNote"></span></div>
+      <div id="flow" class="chart flow"></div>
+    </div>
 
     <div class="panel">
       <div class="panel-head"><h2>Spending pace</h2><span class="pill" id="paceNote"></span></div>
@@ -219,6 +229,10 @@
 
   <!-- SAVINGS -->
   <section class="tab" id="tab-savings" hidden>
+    <div class="panel" id="jarsPanel" hidden>
+      <h2>Pots &amp; goals</h2>
+      <div id="jars" class="jars"></div>
+    </div>
     <div class="panel">
       <div class="panel-head"><h2>Goals</h2><button class="link" id="goalAdd">+ New goal</button></div>
       <div id="goals" class="goals"></div>
@@ -455,7 +469,7 @@
         <button class="danger" id="eraseBtn" type="button">Erase all data</button>
       </details>
     </details>
-    <p class="fine hfine">Kč Ledger · version 9</p>
+    <p class="fine hfine">Kč Ledger · version 10</p>
   </section>
 
   <nav class="tabbar" aria-label="Sections">
@@ -482,9 +496,9 @@
   <div class="viewer-bar"><button class="icon-btn" id="viewNext">Next image</button><span class="spacer"></span><button class="danger" id="viewDel">Remove image</button></div>
 </div>
 <div id="toast" class="toast" role="status" hidden></div>
-<script src="i18n.js?v=9"></script>
-<script src="import.js?v=9"></script>
-<script src="report.js?v=9"></script>
-<script src="app.js?v=9"></script>
+<script src="i18n.js?v=10"></script>
+<script src="import.js?v=10"></script>
+<script src="report.js?v=10"></script>
+<script src="app.js?v=10"></script>
 </body>
 </html>

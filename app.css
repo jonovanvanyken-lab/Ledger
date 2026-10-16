@@ -510,3 +510,63 @@ body.private #hideBtn{color:var(--accent);border-color:var(--accent)}
 .pot-l{display:flex;flex-direction:column;align-items:center;gap:1px;font-size:10.5px;color:var(--muted);line-height:1.1;cursor:pointer}
 .pot-l input{width:18px;height:18px;margin:0;accent-color:var(--accent)}
 .tag.pot{margin-left:6px;background:var(--accent-soft);color:var(--accent)}
+
+.big-list{display:flex;flex-direction:column;gap:6px}
+.big-row{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg);cursor:pointer}
+.big-row input{width:20px;height:20px;margin:0;accent-color:var(--accent)}
+.big-row .bt{display:flex;flex-direction:column;min-width:0}.big-row .bt b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.big-row small{color:var(--muted);font-size:12.5px}
+#yearBtn{margin-bottom:6px}
+.yr-kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.yr-kpis>div{display:flex;flex-direction:column;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.yr-kpis .big{font-size:20px;font-weight:700}.yr-kpis .sub{font-size:12.5px;color:var(--muted)}
+.yr-table{width:100%;border-collapse:collapse;font-size:14px}
+.yr-table th{text-align:right;font-size:11.5px;color:var(--muted);font-weight:600;padding:4px 6px;border-bottom:1px solid var(--line)}
+.yr-table th:first-child,.yr-table td:first-child{text-align:left}
+.yr-table td{text-align:right;padding:6px;border-bottom:1px solid var(--line);position:relative}
+.yr-table td.over{color:var(--bad)}.yr-table td.ok{color:var(--ok)}
+.yr-bar{position:absolute;left:0;bottom:2px;height:3px;border-radius:2px;background:var(--accent);opacity:.35}
+.yr-cats{margin:0;padding-left:20px;font-size:14px}.yr-cats li{display:grid;grid-template-columns:1fr auto 3.6em;gap:8px;padding:4px 0}
+.yr-cats small{color:var(--muted);text-align:right}
+
+.debts{display:flex;flex-direction:column;margin-top:10px}
+.debt{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;text-align:left;border:0;border-top:1px solid var(--line);background:transparent;padding:11px 0}
+.debt:first-child{border-top:0}
+.debt .dt{display:flex;flex-direction:column;min-width:0}.debt small{color:var(--muted);font-size:12.5px}
+.debt.in .amt{color:var(--ok)}.debt.late small{color:var(--bad)}.debt.done{opacity:.65}
+.debts details summary{cursor:pointer;color:var(--muted);font-size:13.5px;padding:8px 0}
+#debtIn{color:var(--ok)}
+.pays{display:flex;flex-direction:column;gap:4px}
+.pay{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:4px 0;border-bottom:1px solid var(--line)}
+.pay .x{border:0;background:transparent;color:var(--muted);font-size:20px}
+.pay-add{display:grid;grid-template-columns:1fr 1fr auto;gap:6px}
+.tag.pot{text-transform:none;letter-spacing:0}
+
+/* money flow */
+.flow-svg .rib{opacity:.32}.flow-svg .rib.rest{opacity:.5}
+.flow-svg .fl-n{font-size:12px;font-weight:600;fill:var(--ink);paint-order:stroke;stroke:var(--panel);stroke-width:3px}
+.flow-svg .fl-v{font-size:11.5px;fill:var(--muted);paint-order:stroke;stroke:var(--panel);stroke-width:3px}
+.flow-svg.anim .rib{animation:ribIn .9s cubic-bezier(.2,.7,.2,1) both}
+@keyframes ribIn{from{opacity:0;transform:scaleX(.2)}to{opacity:.32;transform:none}}
+.flow-svg.anim .rib.rest{animation-name:ribInRest}@keyframes ribInRest{from{opacity:0;transform:scaleX(.2)}to{opacity:.5;transform:none}}
+/* jars */
+.jars{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:14px 10px}
+.jar{display:flex;flex-direction:column;align-items:center;text-align:center;min-width:0}
+.jar svg{width:84px;height:104px}
+.jar .liq{transition:transform 1.6s cubic-bezier(.2,.7,.2,1)}
+.jar .wave{animation:wave 3.2s linear infinite}.jar .wave.w2{animation-duration:4.6s;animation-direction:reverse;transform:translateY(4px)}
+@keyframes wave{from{transform:translateX(0)}to{transform:translateX(-84px)}}
+.jar .jn{font-size:13.5px;margin-top:6px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jar .jb{font-size:16px;font-weight:700}.jar .js{font-size:11.5px;color:var(--muted)}
+/* streak */
+.streak{display:grid;grid-template-columns:repeat(14,1fr);gap:5px;margin-bottom:10px}
+.streak i{aspect-ratio:1;border-radius:50%;background:var(--track)}
+.streak i.ok{background:var(--h-good)}.streak i.over{background:var(--h-off)}
+.streak i.now{background:transparent;border:2.5px solid var(--h-good)}.streak i.over.now{border-color:var(--h-off)}
+.streak i.ok:not(.now){animation:pop .4s ease-out both}
+@keyframes pop{from{transform:scale(.3);opacity:0}to{transform:none;opacity:1}}
+/* celebrations */
+.confetti{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:50}
+.health-dial.beam{animation:beam 1.2s ease-in-out 2}
+@keyframes beam{0%,100%{transform:none}30%{transform:scale(1.08) rotate(-3deg)}60%{transform:scale(1.04) rotate(3deg)}}
+@media (prefers-reduced-motion:reduce){.jar .wave,.flow-svg.anim .rib,.streak i,.health-dial.beam{animation:none!important}.jar .liq{transition:none}}
+.flow-svg text.fl-n{font-family:var(--f-body)}

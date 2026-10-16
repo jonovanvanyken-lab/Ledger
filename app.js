@@ -3,7 +3,7 @@
    A random data key encrypts the ledger and images. That key is stored wrapped by your passcode
    (PBKDF2-SHA256, 600k rounds → AES-GCM) and, if you turn it on, by a Face ID passkey (WebAuthn PRF → HKDF → AES-GCM). */
 "use strict";
-const ITER=600000,DAY=864e5,APP_VERSION=9;
+const ITER=600000,DAY=864e5,APP_VERSION=10;
 const $=id=>document.getElementById(id);
 const te=new TextEncoder(),td=new TextDecoder();
 const b64=buf=>{let s="";const b=buf instanceof Uint8Array?buf:new Uint8Array(buf);for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)};
@@ -149,7 +149,7 @@ async function showApp(){
 }
 function lock(){
   clearTimeout(syncT);pendingJoin=null;key=null;rawKey=null;keys=null;docs={};closeViewer();closeReview();closeSheet();
-  ["ledger","bars","accts","trend","pace","bills","donut","donutLegend","heat","dayList","merchants","goals","invSplit","invChart","netChart","auChart","banners","recap","hDial","hSum","hChecks","hCompare","setCats","setSave","recList","wzBody","kidList","kidSugg","kidBalance","kidMonth","kidChart","setInc","rateRows"].forEach(id=>{const e=$(id);if(e)e.replaceChildren()});
+  ["ledger","bars","accts","trend","pace","bills","donut","donutLegend","heat","dayList","merchants","goals","invSplit","invChart","netChart","auChart","banners","recap","hDial","hSum","hChecks","hCompare","setCats","setSave","recList","wzBody","kidList","kidSugg","kidBalance","kidMonth","kidChart","setInc","rateRows","debtList","flow","jars","streakDots"].forEach(id=>{const e=$(id);if(e)e.replaceChildren()});
   document.querySelectorAll("#app input,#wizard input").forEach(i=>{if(i.type!=="file"&&i.type!=="checkbox"&&i.type!=="radio")i.value=""});
   $("app").hidden=true;$("wizard").hidden=true;$("lock").hidden=false;$("lockSub").textContent=t("Checking this device…");setPrivate(false);boot();
 }
@@ -300,6 +300,8 @@ async function migrate(){
     if(st.invest&&(st.invest.short||st.invest.long)&&st.features.investSplit===undefined)st.features.investSplit=true;
     st.theme=st.theme||"system";st.backupEvery=st.backupEvery||30;
   });
+  // pots started before carry-over existed start counting from this budget month
+  ((st.cats||{}).expense||[]).forEach(c=>{if(c.pot&&!c.potFrom){c.potFrom=curP().s;changed=true}});
   if(changed)await persist();
 }
 
@@ -354,16 +356,16 @@ function render(){
   $("kSaved").textContent=fmt(tt.saving);$("kSavedOf").textContent=t("of {x} target",{x:fmt(tg)});
   $("kIncome").textContent=fmt(tt.income);$("kIncomeSub").textContent=tt.fromIn?t("+ {x} transferred in",{x:fmt(tt.fromIn)}):t("earned this period");
   const os=$("oneoffStrip");os.hidden=!tt.oneoff;if(tt.oneoff){os.replaceChildren(el("span","",t("One-off costs, kept out of the budget")),el("b","amt",fmt(tt.oneoff)));os.onclick=()=>filterTo("__oneoff")}
-  setSyncUI();renderHealth();renderBars(tt,s);renderBills();renderBanners();renderRecap();renderMerchants();renderEntries();renderGoals();renderInvest();renderAccounts();renderAU();renderBio();renderKids();
+  setSyncUI();renderHealth();renderBars(tt,s);renderBills();renderBanners();renderRecap();renderMerchants();renderEntries();renderGoals();renderInvest();renderAccounts();renderAU();renderBio();renderKids();renderDebts();renderJars();renderStreak();setTimeout(checkCelebrations,600);
   if(!$("tab-settings").dataset.dirty)fillSettings();renderRecList();
   renderCharts();
 }
-function renderCharts(){if(!key||!docs.settings||!docs.settings.onboarded)return;renderPace();renderDonut();renderHeat();renderTrend();renderInvChart();renderNet();renderAUChart();renderKidChart()}
+function renderCharts(){if(!key||!docs.settings||!docs.settings.onboarded)return;renderPace();renderDonut();renderHeat();renderTrend();renderInvChart();renderNet();renderAUChart();renderKidChart();renderFlow()}
 function renderBars(tt,s){
   const box=$("bars");box.replaceChildren();
-  EXP_CATS.forEach(c=>{const spent=tt.byCat["expense:"+c]||0,b=s.budget[c];if(!b&&!spent)return;const p2=b?spent/b:(spent?1.01:0);
+  const pp=curP();EXP_CATS.forEach(c=>{const spent=tt.byCat["expense:"+c]||0,pi=potInfo(c,pp),b=pi?pi.avail:s.budget[c];if(!b&&!spent&&!(pi&&pi.carry))return;const p2=b?spent/b:(spent?1.01:0);
     const bar=el("button","bar");bar.type="button";bar.setAttribute("aria-label",t("{c}: {a} of {b}. Show entries",{c,a:fmt(spent),b:fmt(b)}));
-    const top=el("div","bar-top");const nm=el("span","",c);if(potSet().has(c))nm.appendChild(el("span","tag pot",t("own pot")));top.append(nm,el("span","v amt",fmt(spent)+" / "+fmt(b)));
+    const top=el("div","bar-top");const nm=el("span","",c);if(pi)nm.appendChild(el("span","tag pot",pi.carry?t("own pot · {x} carried over",{x:(pi.carry>0?"+":"−")+fmt(Math.abs(pi.carry))}):t("own pot")));top.append(nm,el("span","v amt",fmt(spent)+" / "+fmt(b)));
     const tr=el("div","track"),f=el("div","fill "+(p2>1?"bad":p2>.85?"warn":""));f.style.width=Math.min(100,p2*100).toFixed(1)+"%";tr.appendChild(f);bar.append(top,tr);
     bar.addEventListener("click",()=>filterTo(c));box.appendChild(bar)});
   if(!box.children.length)box.appendChild(el("p","empty",t("Set budgets for your categories in Settings.")));
@@ -561,9 +563,9 @@ function renderHealth(){
       check(will>=tg,t("Savings"),t("{a} saved",{a:fmt(tt.saving)})+(upS?" + "+t("{x} scheduled",{x:fmt(upS)}):"")+" "+t("of your {x} target",{x:fmt(tg)})+(will>=tg?".":" · "+t("{x} short.",{x:fmt(tg-will)})),"savings")}
     const inc=sched.filter(x=>x.ty==="income");if(inc.length){const missing=inc.filter(x=>!x.hit&&x.st!=="due"&&x.st!=="soon");
       check(!missing.length,t("Income"),inc.map(x=>x.r.name+": "+(x.hit?t("received {d}",{d:dDay(x.hit.date)}):x.label.toLowerCase())).join(" · "),"entries")}
-    const pots=EXP_CATS.filter(c=>potSet().has(c)&&(s.budget[c]||tt.byCat["expense:"+c]));
-    if(pots.length){const over=pots.filter(c=>s.budget[c]&&(tt.byCat["expense:"+c]||0)>s.budget[c]);
-      check(!over.length,t("Own pots"),pots.map(c=>c+" "+fmt(tt.byCat["expense:"+c]||0)+(s.budget[c]?" / "+fmt(s.budget[c]):"")).join(" · "),"overview")}
+    const pots=EXP_CATS.filter(c=>potSet().has(c)).map(c=>({c,i:potInfo(c,p)})).filter(x=>x.i&&(x.i.avail||x.i.spent));
+    if(pots.length)check(!pots.some(x=>x.i.left<0),t("Own pots"),pots.map(x=>x.c+": "+t("{x} left",{x:fmt(x.i.left)})+(x.i.carry?" ("+t("incl. {x} carried over",{x:fmt(x.i.carry)})+")":"")).join(" · "),"overview");
+    fastCats(p).forEach(f=>check(false,t("{c} is running fast",{c:f.c}),t("{a} of {b} spent; about {e} would be on pace by now.",{a:fmt(f.spent),b:fmt(f.budget),e:fmt(f.expected)}),"entries"));
     const cc=childCfg();if(cc&&cc.balance!==false){const bal=kidBalanceTo(p.e);if(Math.abs(bal)>=1)check(null,cc.name,bal>0?t("{o} owes you {x}",{o:cc.other||t("The other parent"),x:fmt(bal)}):t("You owe {o} {x}",{o:cc.other||t("the other parent"),x:fmt(-bal)}),"kids")}
   }
   if(!ul.children.length)ul.appendChild(el("li","empty",t("Nothing to check yet.")));
@@ -1000,7 +1002,7 @@ $("saveSettings").addEventListener("click",async()=>{
     out[ty].forEach(c=>{if(c.old&&c.old!==c.n)renameCat(c.old,c.n,ty)});
     const keepOld=new Set(out[ty].map(c=>c.old).filter(Boolean));const fallbackName=()=>{const l=out[ty];return (l.find(c=>c.k==="other")||l[l.length-1]).n};
     before[ty].forEach(c=>{if(!keepOld.has(c.n))renameCat(c.n,fallbackName(),ty)});
-    st.cats[ty]=out[ty].map(c=>c.pot?{n:c.n,k:c.k,pot:true}:{n:c.n,k:c.k})}
+    st.cats[ty]=out[ty].map(c=>{if(!c.pot)return {n:c.n,k:c.k};const was=before[ty].find(x=>x.n===(c.old||c.n));return {n:c.n,k:c.k,pot:true,potFrom:was&&was.pot&&was.potFrom||curP().s}})}
   st.budget={};out.expense.forEach(c=>st.budget[c.n]=c.amount||0);const tg={};out.saving.forEach(c=>tg[c.n]=c.amount||0);
   st.features=st.features||{};st.features.investSplit=$("investSplit").checked&&out.saving.some(c=>c.k==="investing");
   if(st.features.investSplit){st.invest={short:parseNum($("invShort").value)||0,long:parseNum($("invLong").value)||0};const ic=out.saving.filter(c=>c.k==="investing");if(ic.length){ic.forEach(c=>tg[c.n]=0);tg[ic[0].n]=st.invest.short+st.invest.long}}
@@ -1120,7 +1122,7 @@ async function handleImport(files){
   jobs.forEach(j=>{if(j.rb){const r=rbParseCSV(j.text);const ix=r[0]?r[0].indexOf("Account number"):-1;if(ix>=0)r.slice(1).forEach(x=>x[ix]&&own.add(x[ix]))}else KCImport.ownAccountsIn(j.pc,j.map).forEach(a=>own.add(a))});
   const s=settings();const emergency=catList("saving").find(c=>c.k==="emergency");
   const opts={ownAccounts:[...own],emergencyTarget:emergency?s.targets[emergency.n]:0,rules:st.rules||{},salaryWords:st.salaryWords||[],base:baseCur()};
-  const incoming=[];
+  const incoming=[];const addedIds=[];
   jobs.forEach(j=>{const res=j.rb?rbToItems(j.text,opts):KCImport.convert(j.pc,j.map,{...opts,format:j.pc.format});if(res.error){bad++;return}transfers+=res.skipped||0;incoming.push(...res.items)});
   incoming.forEach(i=>{if(have.has(i.id)){dupes++;return}
     if(i.cat&&!catsOf(i.type).includes(i.cat)){const ty=typeOfCat(i.cat);if(catsOf(ty).includes(i.cat))i.type=ty;else delete i.cat}
@@ -1131,13 +1133,14 @@ async function handleImport(files){
     have.add(i.id);i.ts=Date.now();
     const at=findAutoTwin(i);if(at){i.cat=at.it.cat;if(at.it.att)i.att=at.it.att;if(at.it.child)i.child=at.it.child;docs[at.k].items=items(at.k).filter(x=>x.id!==at.it.id);(docs.autoSkip=docs.autoSkip||{})[at.it.id]=1;merged++}
     const tw=at?null:findShotTwin(i);if(tw){i.cat=tw.it.cat;if(tw.it.parts)i.parts=tw.it.parts;if(tw.it.oneoff)i.oneoff=true;if(tw.it.att)i.att=tw.it.att;if(tw.it.child)i.child=tw.it.child;docs[tw.k].items=items(tw.k).filter(x=>x.id!==tw.it.id);merged++}
-    const k="m-"+i.date.slice(0,7);(docs[k]=docs[k]||{items:[]}).items=items(k).concat(i);added++});
+    const k="m-"+i.date.slice(0,7);(docs[k]=docs[k]||{items:[]}).items=items(k).concat(i);added++;addedIds.push(i.id)});
   st.ownAccounts=[...own];
   if(!added&&!dupes&&!setupApplied&&bad){toast(t("Those files couldn't be read as bank exports."));return}
   if(starter)await migrate();if(setupApplied)await runAuto();
   await persist();applyCats();render();
   if(setupApplied&&!added&&!dupes&&!csvs.length){toast(t("Your setup was applied. Delete the setup file from your device."));return}
   toast((starter?t("Starter loaded.")+" ":"")+t("Added {n} {e}",{n:added,e:pl(added,"entry")})+(dupes?", "+t("{n} already here",{n:dupes}):"")+(transfers?", "+t("{n} left out (transfers between your accounts or unfinished payments)",{n:transfers}):"")+(merged?", "+t("{n} matched to automatic or screenshot entries",{n:merged}):"")+(noRate?". "+t("{n} skipped: set their currency's exchange rate first",{n:noRate}):"")+".");
+  if(addedIds.length)setTimeout(()=>askOneoffs(addedIds),400);
 }
 
 /* ---------- images: compressed, encrypted, stored apart from the ledger ---------- */
@@ -1411,7 +1414,7 @@ let wz=null;
 function draftFromDocs(rerun){
   const st=docs.settings||{};const L=LANG;const rec=recList();
   const cats=[];const have=new Map(catList("expense").map(c=>[c.k+"|"+c.n,c]));
-  if(rerun&&st.cats&&st.cats.expense&&st.cats.expense.length){st.cats.expense.forEach(c=>cats.push({k:c.k,n:c.n,on:true,amount:+(st.budget||{})[c.n]||"",pot:!!c.pot}));
+  if(rerun&&st.cats&&st.cats.expense&&st.cats.expense.length){st.cats.expense.forEach(c=>cats.push({k:c.k,n:c.n,on:true,amount:+(st.budget||{})[c.n]||"",pot:!!c.pot,potFrom:c.potFrom}));
     KINDS.expense.forEach(k=>{if(!cats.some(c=>c.k===k))cats.push({k,n:defName(k,"expense",L),on:false,amount:""})})}
   else KINDS.expense.forEach(k=>cats.push({k,n:defName(k,"expense",L),on:!["kids","insurance","subscriptions"].includes(k),amount:""}));
   const salaryR=rec.find(r=>kindOf(r.cat,"income")==="salary");
@@ -1562,7 +1565,7 @@ async function finishWizard(){
   const used=ty=>new Set(allItems().filter(x=>x.i.type===ty).map(x=>x.i.cat));
   const prevCats=st.cats&&st.cats.expense&&st.cats.expense.length?st.cats:{expense:[],saving:[],income:[]};
   d.cats.forEach(c=>{const prev=prevCats.expense.find(p=>p.k===c.k&&p.n!==c.n&&!d.cats.some(z=>z.n===p.n));if(prev&&c.on&&!c.custom)renameCat(prev.n,c.n,"expense")});
-  const exp=d.cats.filter(c=>c.on).map(c=>Object.assign({n:c.n,k:c.k==="other"&&c.custom?guessKind(c.n,"expense"):c.k},c.pot?{pot:true}:{}));used("expense").forEach(n=>{if(!exp.some(c=>c.n===n))exp.push({n,k:kindOf(n,"expense")})});
+  const exp=d.cats.filter(c=>c.on).map(c=>Object.assign({n:c.n,k:c.k==="other"&&c.custom?guessKind(c.n,"expense"):c.k},c.pot?{pot:true,potFrom:c.potFrom||curP().s}:{}));used("expense").forEach(n=>{if(!exp.some(c=>c.n===n))exp.push({n,k:kindOf(n,"expense")})});
   const sav=[...prevCats.saving];const ensureCat=(list,k,ty)=>{let c=list.find(x=>x.k===k);if(!c){c={n:defName(k,ty,L),k};list.push(c)}return c.n};
   const emN=+d.save.emergency||d.save.months?ensureCat(sav,"emergency","saving"):null;const ivN=+d.save.invest?ensureCat(sav,"investing","saving"):null;if(d.save.goals.some(g=>g.name))ensureCat(sav,"goal","saving");if(!sav.length)ensureCat(sav,"emergency","saving");
   const inc=[...prevCats.income];const salN=d.pay.kind!=="none"?ensureCat(inc,"salary","income"):null;d.otherIncome.forEach(o=>{if(o.name&&o.amount)o.cat=o.cat&&inc.some(c=>c.n===o.cat)?o.cat:ensureCat(inc,o.kind||"other","income")});
@@ -1807,6 +1810,218 @@ function openKidStatement(){
     el("p","fine",t("The statement is made on this device. Only what you choose to share leaves it."))]);
 }
 async function copyText(tx){try{await navigator.clipboard.writeText(tx);toast(t("Copied. Paste it into a message or email."))}catch(_){toast(t("Couldn't copy. Select the text in the preview instead."))}}
+
+/* ---------- own pots carry over: what's left in a pot rolls into the next budget month ---------- */
+function potFromOf(name){const c=catList("expense").find(x=>x.n===name);return c&&c.pot?(c.potFrom||curP().s):null}
+// money available in a pot this period = this period's budget + what was left (or overspent) in earlier periods since the pot started
+function potInfo(name,p){
+  const s=settings(),b=+s.budget[name]||0,from=potFromOf(name);if(from==null)return null;
+  const spentIn=q=>totalsP(q).byCat["expense:"+name]||0;let carry=0,q=shiftP(p,-1),n=0;
+  while(q.e>=from&&n<120){carry+=b-spentIn(q);q=shiftP(q,-1);n++}
+  if(p.s<from)carry=0;const spent=spentIn(p);return {budget:b,carry:Math.round(carry),avail:Math.round(b+carry),spent,left:Math.round(b+carry-spent)};
+}
+
+/* ---------- big purchases after an import: offer to keep them out as one-offs ---------- */
+function bigThreshold(){return Math.max(1000,everydayBudget(settings())*.05)}
+function isBillLike(i){return recList().some(r=>typeOfCat(r.cat)==="expense"&&r.cat===i.cat&&Math.abs(recCzk(r)-(+i.czk||0))<=Math.max(recCzk(r)*.1,50))}
+function askOneoffs(ids){
+  const set=new Set(ids);const thr=bigThreshold();const ps=potSet();
+  const list=allItems().filter(({i})=>set.has(i.id)&&i.type==="expense"&&!i.oneoff&&(+i.czk||0)>=thr&&!ps.has(i.cat)&&!isBillLike(i))
+    .sort((a,b)=>(+b.i.czk||0)-(+a.i.czk||0)).slice(0,12);
+  if(!list.length)return;
+  const rows=el("div","big-list");
+  list.forEach(({k,i})=>{const l=el("label","big-row");const c=el("input");c.type="checkbox";c.dataset.k=k;c.dataset.id=i.id;
+    const tx=el("span","bt");tx.append(el("b","",i.note||i.cat),el("small","",dShort(i.date)+" · "+i.cat));l.append(c,tx,el("span","amt",fmt(i.czk)));rows.appendChild(l)});
+  const ok=el("button","primary",t("Keep ticked ones out of the budget"));ok.type="button";const no=el("button","icon-btn",t("They're all everyday spending"));no.type="button";
+  const row=el("div","btnrow wrap");row.append(ok,no);
+  ok.addEventListener("click",async()=>{const pick=[...rows.querySelectorAll("input:checked")].map(c=>[c.dataset.k,c.dataset.id]);
+    pick.forEach(([k,id])=>{docs[k].items=items(k).map(x=>x.id===id?{...x,oneoff:true}:x)});closeSheet();if(pick.length){await persist();render();toast(t("{n} marked as one-off.",{n:pick.length}))}});
+  no.addEventListener("click",()=>closeSheet());
+  openSheet(t("Any one-off purchases?"),[el("p","small",t("These are bigger than usual. Tick any that were one-offs, such as furniture or a deposit, so they don't eat into your daily allowance. They stay in your records.")),rows,row,
+    el("p","fine",t("You can change this later on any entry."))]);
+}
+
+/* ---------- categories running faster than usual ---------- */
+function fastCats(p){
+  if(!isCurP(p))return [];const s=settings(),tt=totalsP(p),ps=potSet();const day=dayIdx(p,todayIso());if(day<4)return [];const frac=day/p.days;
+  const billCats=new Set(recList().filter(r=>typeOfCat(r.cat)==="expense").map(r=>r.cat));
+  return EXP_CATS.filter(c=>{const b=+s.budget[c]||0;if(!b||ps.has(c)||billCats.has(c))return false;const sp=tt.byCat["expense:"+c]||0;return sp>b*.3&&sp>b*frac*1.3})
+    .map(c=>({c,spent:tt.byCat["expense:"+c]||0,budget:+s.budget[c],expected:Math.round((+s.budget[c])*frac)}));
+}
+
+/* ---------- year in review ---------- */
+function openYear(y){
+  const years=[...new Set(monthKeys().map(k=>+k.slice(2,6)))].sort((a,b)=>b-a);if(!years.length){toast(t("Nothing logged."));return}
+  y=y||(years.includes(new Date().getFullYear())?new Date().getFullYear():years[0]);
+  const s=settings(),bt=budgetTotal(s),tg=targetTotal(s);const months=[];const yt={expense:0,oneoff:0,saving:0,income:0,fromIn:0,byCat:{}};
+  for(let m=0;m<12;m++){const k=mKey(y,m);const tt=totals(k);if(!items(k).length)continue;months.push({m,tt});
+    ["expense","oneoff","saving","income","fromIn"].forEach(x=>yt[x]+=tt[x]);Object.entries(tt.byCat).forEach(([c,v])=>yt.byCat[c]=(yt.byCat[c]||0)+v)}
+  const sel=selOf(years.map(v=>[String(v),String(v)]),String(y));sel.addEventListener("change",()=>{closeSheet();openYear(+sel.value)});
+  const kp=el("div","yr-kpis");const kpi=(l,v,sub)=>{const d=el("div");d.append(el("span","label",l),el("span","big amt",v));if(sub)d.appendChild(el("span","sub",sub));kp.appendChild(d)};
+  const inc=yt.income+yt.fromIn;kpi(t("Income"),fmt(inc),yt.fromIn?t("+ {x} transferred in",{x:fmt(yt.fromIn)}):"");kpi(t("Spent"),fmt(yt.expense),yt.oneoff?t("+ {x} one-off",{x:fmt(yt.oneoff)}):"");
+  kpi(t("Saved & invested"),fmt(yt.saving),inc?t("{p} % of income",{p:Math.round(yt.saving/inc*100)}):"");kpi(t("Left over"),fmt(inc-yt.expense-yt.oneoff-yt.saving),"");
+  const tb=el("table","yr-table");const hr=el("tr");[t("Month"),t("Spent"),t("Budget"),t("Saved")].forEach(h=>hr.appendChild(el("th","",h)));tb.appendChild(hr);
+  const mx=Math.max(1,...months.map(x=>Math.max(x.tt.expense,bt)));
+  months.forEach(({m,tt})=>{const r=el("tr");const nm=el("td","",new Date(y,m,1).toLocaleDateString(LOC(),{month:"short"}));const sp=el("td","amt "+(bt&&tt.expense>bt?"over":""));sp.textContent=fmt(tt.expense);
+    const bar=el("i","yr-bar");bar.style.width=(tt.expense/mx*100).toFixed(1)+"%";sp.appendChild(bar);r.append(nm,sp,el("td","amt muted",bt?fmt(bt):"—"),el("td","amt "+(tg&&tt.saving>=tg?"ok":""),fmt(tt.saving)));tb.appendChild(r)});
+  const within=months.filter(x=>bt&&x.tt.expense<=bt).length;
+  const cats=Object.entries(yt.byCat).filter(([k])=>k.startsWith("expense:")).sort((a,b)=>b[1]-a[1]).slice(0,8);const cl=el("ol","yr-cats");
+  cats.forEach(([k,v])=>{const li=el("li");li.append(el("span","",k.slice(8)),el("b","amt",fmt(v)),el("small","",yt.expense?Math.round(v/yt.expense*100)+" %":""));cl.appendChild(li)});
+  const g={};months.forEach(({m})=>items(mKey(y,m)).forEach(i=>{if(i.type!=="expense")return;const mk=merchantKey(i);if(!mk)return;const e=g[mk]||(g[mk]={n:i.note||i.cat,v:0,c:0});e.v+=+i.czk||0;e.c++}));
+  const tm=Object.values(g).sort((a,b)=>b.v-a.v).slice(0,5);const ml=el("ol","yr-cats");tm.forEach(x=>{const li=el("li");li.append(el("span","",x.n),el("b","amt",fmt(x.v)),el("small","",x.c+" "+pl(x.c,"payment")));ml.appendChild(li)});
+  openSheet(t("Year in review"),[fld(t("Year"),sel),kp,
+    el("p","small",bt?t("Within budget in {a} of {b} months.",{a:within,b:months.length}):t("Set budgets to compare months.")),el("h3","",t("Month by month")),tb,
+    el("h3","",t("Where it went")),cl,el("h3","",t("Top places")),ml,el("p","fine",t("Calendar months. Amounts in {c}.",{c:dispCode()}))]);
+}
+$("yearBtn").addEventListener("click",()=>openYear());
+
+/* ---------- money owed to you and money you owe (kept out of the budget) ---------- */
+const debtList=()=>((docs.debts||{}).list)||[];
+function debtLeft(d){const paid=(d.payments||[]).reduce((a,p)=>a+(+p.czk||0),0);return Math.round(((+d.czk||0)-paid)*100)/100}
+function renderDebts(){
+  const box=$("debtList");if(!box)return;box.replaceChildren();const open=debtList().filter(d=>!d.settled),done=debtList().filter(d=>d.settled);
+  const sum=dir=>open.filter(d=>d.dir===dir).reduce((a,d)=>a+Math.max(0,debtLeft(d)),0);
+  $("debtIn").textContent=fmt(sum("in"));$("debtOut").textContent=fmt(sum("out"));
+  if(!open.length)box.appendChild(el("p","empty",t("Nothing outstanding. Add money someone owes you, or money you owe.")));
+  const tI=todayIso();
+  open.slice().sort((a,b)=>(a.due||"9999").localeCompare(b.due||"9999")||(b.date||"").localeCompare(a.date||"")).forEach(d=>{
+    const b=el("button","debt "+d.dir);b.type="button";const left=debtLeft(d);const paid=(+d.czk||0)-left;
+    const tx=el("span","dt");tx.append(el("b","",d.name),el("small","",(d.dir==="in"?t("owes you"):t("you owe"))+(d.note?" · "+d.note:"")+(d.due?" · "+(d.due<tI?t("was due {d}",{d:dShort(d.due)}):t("due {d}",{d:dShort(d.due)})):"")+(paid>0?" · "+t("{x} paid so far",{x:fmt(paid)}):"")));
+    b.append(tx,el("span","amt",fmt(left)));if(d.due&&d.due<tI)b.classList.add("late");b.addEventListener("click",()=>openDebt(d));box.appendChild(b)});
+  if(done.length){const det=el("details","sub-sec");det.appendChild(el("summary","",t("Settled ({n})",{n:done.length})));
+    done.slice().sort((a,b)=>(b.settled||"").localeCompare(a.settled||"")).forEach(d=>{const b=el("button","debt done");b.type="button";const tx=el("span","dt");tx.append(el("b","",d.name),el("small","",(d.dir==="in"?t("owed you"):t("you owed"))+" · "+t("settled {d}",{d:dShort(d.settled)})));b.append(tx,el("span","amt",fmt(d.czk)));b.addEventListener("click",()=>openDebt(d));det.appendChild(b)});box.appendChild(det)}
+}
+function openDebt(d0){
+  const isNew=!d0;const d=d0?JSON.parse(JSON.stringify(d0)):{id:uid("d"),dir:"in",name:"",amount:"",cur:baseCur(),date:todayIso(),due:"",note:"",payments:[]};
+  const dir=selOf([["in",t("They owe me")],["out",t("I owe them")]],d.dir);const name=inp(d.name);name.maxLength=40;name.placeholder=t("Who, e.g. Leo");
+  const amt=inp(d.amount!==""?String(d.amount).replace(".",","):"","","decimal");amt.placeholder="0";const cu=selOf(curOptions([d.cur]),d.cur||baseCur());
+  const date=inp(d.date,"date"),due=inp(d.due||"","date"),note=inp(d.note||"");note.maxLength=80;note.placeholder=t("What it's for, e.g. half of the bond");
+  const r1=el("div","row2");r1.append(fld(t("Amount"),amt),fld(t("Currency"),cu));const r2=el("div","inline2");r2.append(fld(t("Date"),date),fld(t("Due by (optional)"),due));
+  const pays=el("div","pays");const drawPays=()=>{pays.replaceChildren();if(!d.payments.length){pays.appendChild(el("p","small muted",t("No payments yet.")));return}
+    d.payments.forEach(p=>{const r=el("div","pay");r.append(el("span","",dShort(p.date)),el("b","amt",fmt(p.czk)));const x=el("button","x","×");x.type="button";x.setAttribute("aria-label",t("Remove"));x.addEventListener("click",()=>{d.payments=d.payments.filter(z=>z!==p);drawPays()});r.appendChild(x);pays.appendChild(r)})};drawPays();
+  const pAmt=inp("","","decimal");pAmt.placeholder=t("Amount");pAmt.setAttribute("aria-label",t("Payment amount"));const pDate=inp(todayIso(),"date");pDate.setAttribute("aria-label",t("Payment date"));
+  const pAdd=el("button","icon-btn",t("Add payment"));pAdd.type="button";const pr=el("div","pay-add");pr.append(pAmt,pDate,pAdd);
+  const hint=el("p","hint err");
+  pAdd.addEventListener("click",()=>{const a=parseNum(pAmt.value);if(!(a>0)){hint.textContent=t("Enter an amount above zero.");return}const c=cu.value;if(!rateOf(c)){hint.textContent=t("Set the {c} exchange rate in Settings first.",{c});return}
+    d.payments.push({id:uid("p"),date:pDate.value||todayIso(),amount:a,czk:Math.round(a*rateOf(c)*100)/100});pAmt.value="";hint.textContent="";drawPays()});
+  const save=el("button","primary",t("Save"));save.type="button";const settle=el("button","icon-btn",d.settled?t("Reopen"):t("Mark as settled"));settle.type="button";
+  const del=el("button","danger",isNew?t("Cancel"):t("Delete"));del.type="button";const row=el("div","btnrow wrap");row.append(save);if(!isNew)row.append(settle);row.append(del);
+  const commit=async extra=>{const a=parseNum(amt.value),c=cu.value;if(!name.value.trim()){hint.textContent=t("Give it a name.");return false}
+    if(!(a>0)){hint.textContent=t("Enter an amount above zero.");return false}if(!rateOf(c)){hint.textContent=t("Set the {c} exchange rate in Settings first.",{c});return false}
+    const n={...d,dir:dir.value,name:name.value.trim().slice(0,40),amount:a,cur:c,czk:c===d.cur&&a===d.amount&&d.czk!=null?d.czk:Math.round(a*rateOf(c)*100)/100,date:date.value||todayIso(),due:due.value||"",note:note.value.trim().slice(0,80),...(extra||{})};
+    if(!n.due)delete n.due;if(!n.settled)delete n.settled;docs.debts=docs.debts||{list:[]};const l=debtList().filter(z=>z.id!==n.id);l.push(n);docs.debts.list=l;await persist();closeSheet();render();return true};
+  save.addEventListener("click",async()=>{if(await commit({settled:d.settled||(debtLeft({...d,czk:parseNum(amt.value)*rateOf(cu.value)})<=0.5&&d.payments.length?todayIso():"")}))toast(t("Saved."))});
+  settle.addEventListener("click",async()=>{if(await commit({settled:d.settled?"":todayIso()}))toast(d.settled?t("Reopened"):t("Marked as settled"))});
+  del.addEventListener("click",async()=>{if(isNew){closeSheet();return}if(!del.classList.contains("confirm")){del.classList.add("confirm");del.textContent=t("Tap again to delete");return}
+    docs.debts.list=debtList().filter(z=>z.id!==d.id);await persist();closeSheet();render();toast(t("Deleted"))});
+  openSheet(isNew?t("Add money owed"):t("Edit"),[fld(t("Who owes whom"),dir),fld(t("Name"),name),r1,fld(t("Note"),note),r2,el("h3","",t("Payments")),pays,pr,
+    el("p","fine",t("Payments here are just for keeping track. They don't change your budget or ledger.")),row,hint].filter(Boolean));
+}
+$("debtAdd").addEventListener("click",()=>openDebt(null));
+
+/* ---------- visual extras: money flow, jars, celebrations, streak ---------- */
+const reduceMotion=()=>matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* money flow: where this period's money came from and where it went */
+let flowSig="";
+function flowData(p){
+  const tt=totalsP(p),ps=potSet(),ic=investCats();
+  const src=Object.entries(tt.byCat).filter(([k,v])=>k.startsWith("income:")&&v>0).map(([k,v])=>({n:k.slice(7),v})).sort((a,b)=>b.v-a.v);
+  if(src.length>4){const rest=src.splice(3);src.push({n:t("Other income"),v:rest.reduce((a,x)=>a+x.v,0)})}
+  let bills=0;billStatus(p).forEach(x=>{if(x.ty==="expense"&&x.hit&&!x.hit.oneoff&&!ps.has(x.r.cat))bills+=+x.hit.czk||0});
+  const inv=ic.reduce((a,c)=>a+(tt.byCat["saving:"+c]||0),0);
+  const out=[{n:t("Bills"),v:bills,c:"var(--c3)"},{n:t("Everyday spending"),v:Math.max(0,tt.expense-tt.pot-bills),c:"var(--c1)"},{n:t("Own pots"),v:tt.pot,c:"var(--c4)"},
+    {n:t("One-offs"),v:tt.oneoff,c:"var(--c7)"},{n:t("Saved"),v:tt.saving-inv,c:"var(--c2)"},{n:t("Invested"),v:inv,c:"var(--c6)"}].filter(x=>x.v>=1);
+  const tin=src.reduce((a,x)=>a+x.v,0),tout=out.reduce((a,x)=>a+x.v,0);
+  if(tin-tout>=1)out.push({n:isCurP(p)?t("Not spent yet"):t("Left over"),v:tin-tout,c:"var(--line)",rest:true});
+  else if(tout-tin>=1)src.push({n:t("From your balance"),v:tout-tin,bal:true});
+  return {src,out,total:Math.max(tin,tout)};
+}
+function renderFlow(){
+  const box=$("flow");if(!box||!key)return;const p=curP();const d=flowData(p);
+  if(!d.total){box.replaceChildren(el("div","empty",t("The chart fills in as you add entries.")));flowSig="";return}
+  const sig=p.s+"|"+d.src.map(x=>Math.round(x.v)).join(",")+"|"+d.out.map(x=>Math.round(x.v)).join(",");const W=boxW(box);const anim=sig!==flowSig.split("#")[0];
+  if(sig+"#"+W===flowSig)return;flowSig=sig+"#"+W;
+  const n=Math.max(d.src.length,d.out.length),GAP=6,NW=9,SLOT=32,H=Math.max(230,n*(SLOT+GAP)+150),k=(H-20-n*(SLOT+GAP))/d.total;
+  const svg=svgEl(W,H,t("Where the money went"));svg.classList.add("flow-svg");if(anim&&!reduceMotion())svg.classList.add("anim");
+  // each node gets room for its two-line label, however small its amount
+  const place=(list)=>{const sl=list.map(x=>{const h=Math.max(3,x.v*k);return {h,s:Math.max(SLOT,h)}});const used=sl.reduce((a,x)=>a+x.s,0)+GAP*(list.length-1);let y=10+(H-20-used)/2;
+    return list.map((x,ix)=>{const {h,s}=sl[ix];const o={...x,y:y+(s-h)/2,h,ly:y+s/2};y+=s+GAP;return o})};
+  const L=place(d.src),R=place(d.out);const x1=NW,x2=W-NW,xm=W/2;
+  // non-crossing flows: walk both sides top to bottom
+  let i=0,j=0,li=L.map(x=>({...x,used:0})),ri=R.map(x=>({...x,used:0}));const ribbons=[];
+  while(i<li.length&&j<ri.length){const a=li[i],b=ri[j];const v=Math.min(a.v-a.used,b.v-b.used);if(v>0.5){
+      const a0=a.y+a.used/a.v*a.h,a1=a.y+(a.used+v)/a.v*a.h,b0=b.y+b.used/b.v*b.h,b1=b.y+(b.used+v)/b.v*b.h;ribbons.push({a0,a1,b0,b1,c:b.c,rest:b.rest})}
+    a.used+=v;b.used+=v;if(a.v-a.used<0.5)i++;if(b.v-b.used<0.5)j++}
+  ribbons.forEach((r,ix)=>{const e=svg.add("path",{d:`M${x1} ${r.a0} C${xm} ${r.a0} ${xm} ${r.b0} ${x2} ${r.b0} L${x2} ${r.b1} C${xm} ${r.b1} ${xm} ${r.a1} ${x1} ${r.a1} Z`,fill:r.c,class:"rib"+(r.rest?" rest":"")});e.style.animationDelay=(ix*60)+"ms"});
+  L.forEach(x=>{svg.add("rect",{x:0,y:x.y,width:NW,height:x.h,rx:2,fill:x.bal?"var(--warn)":"var(--ok)"});
+    const ty=x.ly;svg.add("text",{x:NW+6,y:ty-2,class:"fl-n"},x.n);svg.add("text",{x:NW+6,y:ty+12,class:"fl-v amt"},fmt(x.v))});
+  R.forEach(x=>{svg.add("rect",{x:W-NW,y:x.y,width:NW,height:x.h,rx:2,fill:x.rest?"var(--muted)":x.c});
+    const ty=x.ly;svg.add("text",{x:W-NW-6,y:ty-2,"text-anchor":"end",class:"fl-n"},x.n);svg.add("text",{x:W-NW-6,y:ty+12,"text-anchor":"end",class:"fl-v amt"},fmt(x.v))});
+  box.replaceChildren(svg);$("flowNote").textContent=isCurP(p)?t("so far this period"):"";
+}
+
+/* jars for own pots and goals */
+let jarSeen={};
+function renderJars(){
+  const box=$("jars");if(!box)return;const p=curP();const list=[];
+  EXP_CATS.filter(c=>potSet().has(c)).forEach(c=>{const pi=potInfo(c,p);if(!pi||!(pi.avail>0||pi.spent))return;
+    list.push({id:"pot:"+c,name:c,f:pi.avail>0?Math.max(0,pi.left)/pi.avail:0,big:fmt(Math.max(0,pi.left)),sub:t("left of {x}",{x:fmt(pi.avail)}),col:"var(--c4)"})});
+  goalList().forEach(g=>{if(!(+g.target>0))return;const v=goalProgress(g);list.push({id:"goal:"+g.id,name:g.name,f:Math.min(1,v/g.target),big:Math.round(v/g.target*100)+" %",sub:t("{a} of {b}",{a:fmt(v),b:fmt(g.target)}),col:(g.src||"").startsWith("inv:")?"var(--c6)":"var(--c2)"})});
+  $("jarsPanel").hidden=!list.length;if(!list.length){box.replaceChildren();return}
+  box.replaceChildren();
+  list.forEach((j,ix)=>{const cell=el("div","jar");const W=84,H=104,id="jc"+ix;const fill=Math.max(0,Math.min(1,j.f));
+    const svg=document.createElementNS(NS,"svg");svg.setAttribute("viewBox",`0 0 ${W} ${H}`);svg.setAttribute("role","img");svg.setAttribute("aria-label",j.name+": "+j.big+", "+j.sub);
+    const jarPath="M26 6 h32 v8 c0 4 14 8 14 20 v56 c0 6 -5 10 -11 10 h-38 c-6 0 -11 -4 -11 -10 v-56 c0 -12 14 -16 14 -20 z";
+    svg.innerHTML=`<defs><clipPath id="${id}"><path d="${jarPath}"/></clipPath></defs>
+      <g clip-path="url(#${id})"><rect x="0" y="0" width="${W}" height="${H}" fill="var(--track)"/>
+      <g class="liq" style="transform:translateY(${H}px)"><g class="wave"><path d="${wavePath(W)}" fill="${j.col}" opacity=".55"/></g><g class="wave w2"><path d="${wavePath(W)}" fill="${j.col}"/></g></g></g>
+      <path d="${jarPath}" fill="none" stroke="var(--muted)" stroke-width="1.6"/><rect x="24" y="3" width="36" height="6" rx="2" fill="var(--muted)" opacity=".6"/>`;
+    cell.appendChild(svg);cell.append(el("b","jn",j.name),el("span","jb amt",j.big),el("span","js amt",j.sub));box.appendChild(cell);
+    const target=14+(1-fill)*(H-14);const liq=svg.querySelector(".liq");const prev=jarSeen[j.id];
+    if(prev==null&&!reduceMotion()){requestAnimationFrame(()=>requestAnimationFrame(()=>{liq.style.transform=`translateY(${target}px)`}))}
+    else{liq.style.transition="none";liq.style.transform=`translateY(${prev!=null?prev:target}px)`;if(prev!=null&&prev!==target&&!reduceMotion())requestAnimationFrame(()=>requestAnimationFrame(()=>{liq.style.transition="";liq.style.transform=`translateY(${target}px)`}));else liq.style.transform=`translateY(${target}px)`}
+    jarSeen[j.id]=target});
+}
+function wavePath(W){let d="M0 4";const L=W;for(let x=0;x<=W*2;x+=L/2)d+=` Q${x+L/4} ${x/(L/2)%2?8:0} ${x+L/2} 4`;return d+` V200 H0 Z`}
+
+/* celebrations: confetti when a budget month ends under budget or a goal passes 25/50/75/100 % */
+function confetti(){
+  if(reduceMotion())return;const c=document.createElement("canvas");c.className="confetti";document.body.appendChild(c);const dpr=devicePixelRatio||1;
+  c.width=innerWidth*dpr;c.height=innerHeight*dpr;const x=c.getContext("2d");x.scale(dpr,dpr);
+  const cols=["#2d5bd0","#1f8a5b","#e2761b","#8a4fc4","#e0a548","#0e8a9a","#c0567f"];
+  const P=Array.from({length:140},()=>({x:innerWidth/2+(Math.random()-.5)*80,y:innerHeight*.35,vx:(Math.random()-.5)*9,vy:-Math.random()*10-4,r:Math.random()*Math.PI,vr:(Math.random()-.5)*.3,w:6+Math.random()*5,h:3+Math.random()*4,c:cols[Math.floor(Math.random()*cols.length)]}));
+  const t0=performance.now();(function f(now){const el2=now-t0;x.clearRect(0,0,innerWidth,innerHeight);
+    P.forEach(p=>{p.vy+=.28;p.vx*=.99;p.x+=p.vx;p.y+=p.vy;p.r+=p.vr;x.save();x.translate(p.x,p.y);x.rotate(p.r);x.globalAlpha=Math.max(0,1-el2/2600);x.fillStyle=p.c;x.fillRect(-p.w/2,-p.h/2,p.w,p.h);x.restore()});
+    if(el2<2600)requestAnimationFrame(f);else c.remove()})(t0);
+}
+let celeBusy=false;
+async function checkCelebrations(){
+  if(celeBusy||!key||!docs.settings||!docs.settings.onboarded||$("app").hidden)return;celeBusy=true;
+  try{const st=ensureSettings();st.cele=st.cele||{months:{},goals:{}};const msgs=[];let changed=false;
+    const now=periodOfDate(new Date()),pp=shiftP(period(now.y,now.m),-1),B=everydayBudget(settings());
+    if(B&&!st.cele.months[pp.s]){const tt=totalsP(pp);if(pItems(pp).length>3){st.cele.months[pp.s]=1;changed=true;if(tt.everyday<=B)msgs.push(t("You finished {p} under budget by {x}.",{p:pLabel(pp),x:fmt(B-tt.everyday)}))}}
+    goalList().forEach(g=>{if(!(+g.target>0))return;const m=Math.min(100,Math.floor(goalProgress(g)/g.target*4)*25);const was=st.cele.goals[g.id];
+      if(was==null||m!==was){st.cele.goals[g.id]=m;changed=true;if(was!=null&&m>was)msgs.push(m>=100?t("{g} reached. Well done!",{g:g.name}):t("{g} is {m} % of the way there.",{g:g.name,m}))}});
+    if(changed)await persist();
+    if(msgs.length){confetti();toast(msgs.join(" "));const f=$("hDial");if(f){f.classList.add("beam");setTimeout(()=>f.classList.remove("beam"),2600)}}
+  }finally{celeBusy=false}
+}
+
+/* streak: days in a row within the usual daily allowance */
+function renderStreak(){
+  const panel=$("streakPanel");if(!panel)return;const p=curP();const o=healthCalc(p);
+  if(o.mode!=="current"||!(o.normal>0)){panel.hidden=true;return}
+  const first=allItems().reduce((a,{i})=>i.date&&(!a||i.date<a)?i.date:a,"");const byDay={};
+  allItems().forEach(({i})=>{const v=everydayCzk(i);if(v&&!isBillLike(i)&&i.src!=="auto")byDay[i.date]=(byDay[i.date]||0)+v});
+  const days=[];for(let n=13;n>=0;n--){const d=new Date();d.setDate(d.getDate()-n);const s=iso(d);days.push({s,v:byDay[s]||0,today:n===0,before:!first||s<first})}
+  let streak=0;for(let n=1;n<400;n++){const d=new Date();d.setDate(d.getDate()-n);const s=iso(d);if(!first||s<first)break;if((byDay[s]||0)>o.normal)break;streak++}
+  const todayOk=(byDay[todayIso()]||0)<=o.normal;
+  const dots=$("streakDots");dots.replaceChildren();days.forEach(d=>{const i=el("i",d.before?"none":d.today?(todayOk?"ok now":"over now"):(d.v<=o.normal?"ok":"over"));
+    i.title=dShort(d.s)+(d.before?"":" · "+fmt(d.v));dots.appendChild(i)});
+  panel.hidden=false;$("streakPill").textContent=streak+" "+pl(streak,"day");$("streakPill").className="pill "+(streak?"ok":"");
+  $("streakText").textContent=streak?t("{n} {d} in a row within your usual {x} a day.",{n:streak,d:pl(streak,"day"),x:fmt(o.normal)})+(todayOk?" "+t("Today is on track so far."):""):t("No streak yet. Stay within {x} today to start one.",{x:fmt(o.normal)});
+}
 
 /* ---------- start ---------- */
 let rz;addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(renderCharts,150)});
