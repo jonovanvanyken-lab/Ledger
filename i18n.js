@@ -807,6 +807,12 @@ window.KC_CS={
 "Settings": "Nastavení",
 "Attached image": "Přiložený obrázek",
 "Next image": "Další obrázek",
-"Show amounts": "Zobrazit částky"
+"Show amounts": "Zobrazit částky",
+"Own pot": "Vlastní kasička",
+"own pot": "vlastní kasička",
+"Own pot: keep out of the daily allowance": "Vlastní kasička: nepočítat do denního limitu",
+"Own pots": "Vlastní kasičky",
+"Leaves out {x} spent from your own pots": "Nepočítá {x} utracených z vlastních kasiček",
+"{x} of it for everyday spending": "z toho {x} na běžné výdaje"
 };
 window.KC_PL={"day": {"en": ["day", "days"], "cs": ["den", "dny", "dní"]}, "payment": {"en": ["payment", "payments"], "cs": ["platba", "platby", "plateb"]}, "image": {"en": ["image", "images"], "cs": ["obrázek", "obrázky", "obrázků"]}, "entry": {"en": ["entry", "entries"], "cs": ["položka", "položky", "položek"]}, "transaction": {"en": ["transaction", "transactions"], "cs": ["transakce", "transakce", "transakcí"]}, "category": {"en": ["category", "categories"], "cs": ["kategorie", "kategorie", "kategorií"]}};

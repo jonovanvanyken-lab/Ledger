@@ -239,13 +239,17 @@ function allItems(){const out=[];monthKeys().forEach(k=>items(k).forEach(i=>out.
 function allIds(){return new Set(allItems().map(x=>x.i.id))}
 function partsOf(i){return i.type==="expense"&&Array.isArray(i.parts)&&i.parts.length?i.parts:[{cat:i.cat,czk:Number(i.czk)||0}]}
 function totalsList(list){
-  const tt={expense:0,oneoff:0,saving:0,income:0,fromIn:0,byCat:{}};
+  const tt={expense:0,oneoff:0,saving:0,income:0,fromIn:0,pot:0,byCat:{}};const pots=potSet();
   list.forEach(i=>{const v=Number(i.czk)||0;
-    if(i.type==="expense"){if(i.oneoff){tt.oneoff+=v;return}tt.expense+=v;partsOf(i).forEach(p=>tt.byCat["expense:"+p.cat]=(tt.byCat["expense:"+p.cat]||0)+(Number(p.czk)||0))}
+    if(i.type==="expense"){if(i.oneoff){tt.oneoff+=v;return}tt.expense+=v;partsOf(i).forEach(p=>{const c=Number(p.czk)||0;tt.byCat["expense:"+p.cat]=(tt.byCat["expense:"+p.cat]||0)+c;if(pots.has(p.cat))tt.pot+=c})}
     else if(i.type==="income"){if(i.childRepay)return;if(isTransferCat(i.cat))tt.fromIn+=v;else tt.income+=v;tt.byCat["income:"+i.cat]=(tt.byCat["income:"+i.cat]||0)+v}
     else{tt.saving+=v;tt.byCat["saving:"+i.cat]=(tt.byCat["saving:"+i.cat]||0)+v}});
-  return tt;
+  tt.everyday=tt.expense-tt.pot;return tt;
 }
+// categories with their own pot (travel, hobbies…) stay out of the daily allowance and the Health face
+const potSet=()=>new Set(catList("expense").filter(c=>c.pot).map(c=>c.n));
+const everydayCzk=i=>i.type!=="expense"||i.oneoff?0:(()=>{const ps=potSet();return partsOf(i).reduce((a,p)=>a+(ps.has(p.cat)?0:Number(p.czk)||0),0)})();
+const everydayBudget=s=>{const ps=potSet();return EXP_CATS.reduce((a,c)=>a+(ps.has(c)?0:s.budget[c]||0),0)};
 const totals=k=>totalsList(items(k));
 const budgetTotal=s=>EXP_CATS.reduce((a,c)=>a+s.budget[c],0);
 const targetTotal=s=>SAVE_CATS.reduce((a,c)=>a+s.targets[c],0);
@@ -359,19 +363,19 @@ function renderBars(tt,s){
   const box=$("bars");box.replaceChildren();
   EXP_CATS.forEach(c=>{const spent=tt.byCat["expense:"+c]||0,b=s.budget[c];if(!b&&!spent)return;const p2=b?spent/b:(spent?1.01:0);
     const bar=el("button","bar");bar.type="button";bar.setAttribute("aria-label",t("{c}: {a} of {b}. Show entries",{c,a:fmt(spent),b:fmt(b)}));
-    const top=el("div","bar-top");top.append(el("span","",c),el("span","v amt",fmt(spent)+" / "+fmt(b)));
+    const top=el("div","bar-top");const nm=el("span","",c);if(potSet().has(c))nm.appendChild(el("span","tag pot",t("own pot")));top.append(nm,el("span","v amt",fmt(spent)+" / "+fmt(b)));
     const tr=el("div","track"),f=el("div","fill "+(p2>1?"bad":p2>.85?"warn":""));f.style.width=Math.min(100,p2*100).toFixed(1)+"%";tr.appendChild(f);bar.append(top,tr);
     bar.addEventListener("click",()=>filterTo(c));box.appendChild(bar)});
   if(!box.children.length)box.appendChild(el("p","empty",t("Set budgets for your categories in Settings.")));
 }
 function renderPace(){
-  const box=$("pace");const p=curP();const s=settings(),bt=budgetTotal(s);
+  const box=$("pace");const p=curP();const s=settings(),bt=everydayBudget(s);
   if(!bt){box.replaceChildren(el("div","empty",t("Set a monthly budget in Settings to see your pace.")));$("paceNote").textContent="";return}
   if(isFutureP(p)){box.replaceChildren(el("div","empty",t("This period hasn't started yet.")));$("paceNote").textContent="";return}
   const dim=p.days,curM=isCurP(p),upto=curM?dayIdx(p,todayIso()):dim;
   const bills=monthBills(p);const billSum=bills.reduce((a,b)=>a+b.amount,0);const rest=Math.max(0,bt-billSum)/dim;
   const plan=[0],act=[0];const daily=Array(dim+1).fill(0);
-  pItems(p).forEach(i=>{if(i.type==="expense"&&!i.oneoff){const d=dayIdx(p,i.date);if(d>=1&&d<=dim)daily[d]+=+i.czk||0}});
+  pItems(p).forEach(i=>{const v=everydayCzk(i);if(v){const d=dayIdx(p,i.date);if(d>=1&&d<=dim)daily[d]+=v}});
   for(let d=1;d<=dim;d++){plan[d]=plan[d-1]+rest+bills.filter(b=>b.idx===d).reduce((a,b)=>a+b.amount,0);act[d]=act[d-1]+daily[d]}
   const diff=act[upto]-plan[upto];const note=$("paceNote");note.className="pill "+(diff>0?(diff>bt*.05?"bad":"warn"):"ok");note.textContent=(diff>0?t("{x} over plan",{x:fmt(diff)}):t("{x} under plan",{x:fmt(-diff)}))+(curM?" "+t("today"):"");
   const W=boxW(box),H=190,pl2=40,pr=10,pt=10,pb=22;const max=Math.max(plan[dim],act[upto])*1.06||1;
@@ -477,7 +481,7 @@ function renderTrend(){
 
 /* ---------- health: is this period's spending on track? ---------- */
 function healthCalc(p){
-  const s=settings(),B=budgetTotal(s),tt=totalsP(p),S=tt.expense,dim=p.days;
+  const s=settings(),B=everydayBudget(s),tt=totalsP(p),S=tt.everyday,dim=p.days;
   const curM=isCurP(p),future=isFutureP(p);
   const bills=monthBills(p);const planned=bills.reduce((a,b)=>a+b.amount,0);
   const upcoming=curM?bills.filter(b=>!b.x.hit):[];const U=upcoming.reduce((a,b)=>a+b.amount,0);
@@ -485,8 +489,8 @@ function healthCalc(p){
   const tI=todayIso();const today=curM?dayIdx(p,tI):dim,daysLeft=curM?dim-today+1:0;
   const normal=Math.max(0,B-planned)/dim;
   let plan=0;for(let d=1;d<=today;d++)plan+=normal+bills.filter(b=>b.idx===d).reduce((a,b)=>a+b.amount,0);
-  const spentToday=curM?pItems(p).filter(i=>i.type==="expense"&&!i.oneoff&&i.date===tI).reduce((a,i)=>a+(+i.czk||0),0):0;
-  const o={B,S,U,upcoming,planned,paid,dim,today,daysLeft,normal,plan,spentToday,oneoff:tt.oneoff,mode:!B?"nobudget":future?"future":curM?"current":"past"};
+  const spentToday=curM?pItems(p).filter(i=>i.date===tI).reduce((a,i)=>a+everydayCzk(i),0):0;
+  const o={B,S,U,upcoming,planned,paid,dim,today,daysLeft,normal,plan,spentToday,oneoff:tt.oneoff,pot:tt.pot,mode:!B?"nobudget":future?"future":curM?"current":"past"};
   if(o.mode==="current"){o.left=B-S-U;o.perDay=o.left/daysLeft;o.r=o.left<0?0:(normal>0?o.perDay/normal:1);
     const everyday=Math.max(0,S-paid),rate=everyday/Math.max(1,today);o.rate=rate;o.projected=S+rate*(dim-today)+U;o.forecastOk=today>=3}
   else if(o.mode==="past"){o.left=B-S;o.r=S<=B?1.15:Math.max(0,1-(S-B)/B*3)}else o.r=null;
@@ -540,7 +544,7 @@ function renderHealth(){
     if(o.spentToday)cmp.appendChild(el("span","amt muted","· "+t("spent today {x}",{x:fmt(o.spentToday)})));
   }
   const dl=$("hSum");dl.replaceChildren();const row=(op,label,note,val,tot)=>{const dt=el("dt","",op),dd=el("dd",tot?"tot":"",label);if(note)dd.appendChild(el("span","note",note));dl.append(dt,dd,el("dd","v amt"+(tot?" tot":""),val))};
-  const oneNote=o.oneoff?t("Leaves out {x} of one-off costs",{x:fmt(o.oneoff)}):null;
+  const oneNote=[o.oneoff?t("Leaves out {x} of one-off costs",{x:fmt(o.oneoff)}):"",o.pot?t("Leaves out {x} spent from your own pots",{x:fmt(o.pot)}):""].filter(Boolean).join(" · ")||null;
   if(o.mode==="current"){row("",t("Spending budget for the period"),null,fmt(o.B));row("−",t("Spent so far"),oneNote,fmt(o.S));
     row("−",t("Bills still to come"),o.upcoming.length?o.upcoming.map(b=>b.x.r.name+" ("+dDay(b.x.dIso)+")").join(", "):t("None left this period"),fmt(o.U));
     row("=",t("Left for everyday spending"),null,fmt(o.left),true);row("÷",t("Days left, including today"),null,String(o.daysLeft));row("=",t("Each day"),null,o.left<0?fmt(0):fmt(o.perDay),true)}
@@ -557,6 +561,9 @@ function renderHealth(){
       check(will>=tg,t("Savings"),t("{a} saved",{a:fmt(tt.saving)})+(upS?" + "+t("{x} scheduled",{x:fmt(upS)}):"")+" "+t("of your {x} target",{x:fmt(tg)})+(will>=tg?".":" · "+t("{x} short.",{x:fmt(tg-will)})),"savings")}
     const inc=sched.filter(x=>x.ty==="income");if(inc.length){const missing=inc.filter(x=>!x.hit&&x.st!=="due"&&x.st!=="soon");
       check(!missing.length,t("Income"),inc.map(x=>x.r.name+": "+(x.hit?t("received {d}",{d:dDay(x.hit.date)}):x.label.toLowerCase())).join(" · "),"entries")}
+    const pots=EXP_CATS.filter(c=>potSet().has(c)&&(s.budget[c]||tt.byCat["expense:"+c]));
+    if(pots.length){const over=pots.filter(c=>s.budget[c]&&(tt.byCat["expense:"+c]||0)>s.budget[c]);
+      check(!over.length,t("Own pots"),pots.map(c=>c+" "+fmt(tt.byCat["expense:"+c]||0)+(s.budget[c]?" / "+fmt(s.budget[c]):"")).join(" · "),"overview")}
     const cc=childCfg();if(cc&&cc.balance!==false){const bal=kidBalanceTo(p.e);if(Math.abs(bal)>=1)check(null,cc.name,bal>0?t("{o} owes you {x}",{o:cc.other||t("The other parent"),x:fmt(bal)}):t("You owe {o} {x}",{o:cc.other||t("the other parent"),x:fmt(-bal)}),"kids")}
   }
   if(!ul.children.length)ul.appendChild(el("li","empty",t("Nothing to check yet.")));
@@ -851,7 +858,7 @@ function billStatus(p){
     out.push({r,ty,hit,st,label,dIso,dueSoon,idx:dayIdx(p,dIso)})})});
   return out.sort((a,b)=>a.dIso.localeCompare(b.dIso)||(a.r.time||"").localeCompare(b.r.time||""));
 }
-function monthBills(p){return billStatus(p).filter(x=>x.ty==="expense").map(x=>({x,amount:recCzk(x.r),idx:x.idx}))}
+function monthBills(p){const ps=potSet();return billStatus(p).filter(x=>x.ty==="expense"&&!ps.has(x.r.cat)).map(x=>({x,amount:recCzk(x.r),idx:x.idx}))}
 
 /* ---------- recurring items editor and calendar reminders ---------- */
 function renderRecList(){
@@ -960,16 +967,18 @@ $("setPayday").addEventListener("change",savePeriod);
 function savePeriod(){const st=ensureSettings();st.period={type:$("setPeriod").value,day:+$("setPayday").value||1};cur=periodOfDate(new Date());persist().then(render)}
 // categories and budgets
 function fillCatEditor(){
-  const mk=(boxId,ty,amounts)=>{const box=$(boxId);box.replaceChildren();catList(ty).forEach(c=>box.appendChild(catRow(ty,c.n,amounts?amounts[c.n]:null,c.k)))};
+  const mk=(boxId,ty,amounts)=>{const box=$(boxId);box.replaceChildren();catList(ty).forEach(c=>box.appendChild(catRow(ty,c.n,amounts?amounts[c.n]:null,c.k,c.pot)))};
   const s=settings();mk("setCats","expense",s.budget);mk("setSave","saving",s.targets);mk("setInc","income",null);
   $("investSplit").checked=splitOn();$("invShort").value=s.invest.short||"";$("invLong").value=s.invest.long||"";$("splitFields").hidden=!splitOn();$("splitWrap").hidden=!investCats().length;
-  $("catTotal").textContent=t("Total spending budget: {x}",{x:fmtCur(budgetTotal(s),baseCur())});$("saveSettings").disabled=true;
+  const eb=everydayBudget(s),tb=budgetTotal(s);$("catTotal").textContent=t("Total spending budget: {x}",{x:fmtCur(tb,baseCur())})+(eb!==tb?" · "+t("{x} of it for everyday spending",{x:fmtCur(eb,baseCur())}):"");$("saveSettings").disabled=true;
 }
-function catRow(ty,name,amount,kind){
+function catRow(ty,name,amount,kind,pot){
   const r=el("div","cat-row");r.dataset.old=name||"";r.dataset.kind=kind||"other";
   const n=inp(name||"");n.placeholder=t("Category name");n.setAttribute("aria-label",t("Category name"));n.maxLength=40;r.appendChild(n);
   if(amount!==null&&amount!==undefined||ty!=="income"){const a=inp(amount?String(amount):"","","decimal");a.className="amt";a.placeholder="0";a.setAttribute("aria-label",ty==="saving"?t("Monthly target"):t("Monthly budget"));r.appendChild(a);r._a=a;
     if(ty==="saving"&&kind==="investing"&&splitOn())a.disabled=true}
+  if(ty==="expense"){const pc=el("input");pc.type="checkbox";pc.checked=!!pot;pc.className="potchk";pc.title=t("Own pot: keep out of the daily allowance");pc.setAttribute("aria-label",t("Own pot: keep out of the daily allowance"));
+    pc.addEventListener("change",markCats);r._pot=pc;const lb=el("label","pot-l");lb.append(pc,el("span","",t("Own pot")));r.appendChild(lb)}
   const x=el("button","x","×");x.type="button";x.setAttribute("aria-label",t("Remove category"));x.addEventListener("click",()=>{r.remove();markCats()});r.appendChild(x);
   r.querySelectorAll("input").forEach(i=>i.addEventListener("input",markCats));r._n=n;r._ty=ty;return r;
 }
@@ -984,14 +993,14 @@ $("saveSettings").addEventListener("click",async()=>{
   const st=ensureSettings();const before={expense:catList("expense"),saving:catList("saving"),income:catList("income")};const out={};let err="";
   for(const [box,ty] of [["setCats","expense"],["setSave","saving"],["setInc","income"]]){const rows=[...$(box).children];const list=[];const seen=new Set();
     rows.forEach(r=>{const n=r._n.value.trim();if(!n)return;if(seen.has(n)){err=t("Two categories are called {n}.",{n});return}seen.add(n);const old=r.dataset.old;
-      list.push({n,k:old?(before[ty].find(c=>c.n===old)||{}).k||r.dataset.kind:guessKind(n,ty),old,amount:r._a?parseNum(r._a.value)||0:null})});
+      list.push({n,k:old?(before[ty].find(c=>c.n===old)||{}).k||r.dataset.kind:guessKind(n,ty),old,amount:r._a?parseNum(r._a.value)||0:null,pot:!!(r._pot&&r._pot.checked)})});
     if(!list.length)err=t("Keep at least one category of each type.");out[ty]=list}
   if(err){$("setHint").className="hint err";$("setHint").textContent=err;return}
   for(const ty of ["expense","saving","income"]){
     out[ty].forEach(c=>{if(c.old&&c.old!==c.n)renameCat(c.old,c.n,ty)});
     const keepOld=new Set(out[ty].map(c=>c.old).filter(Boolean));const fallbackName=()=>{const l=out[ty];return (l.find(c=>c.k==="other")||l[l.length-1]).n};
     before[ty].forEach(c=>{if(!keepOld.has(c.n))renameCat(c.n,fallbackName(),ty)});
-    st.cats[ty]=out[ty].map(c=>({n:c.n,k:c.k}))}
+    st.cats[ty]=out[ty].map(c=>c.pot?{n:c.n,k:c.k,pot:true}:{n:c.n,k:c.k})}
   st.budget={};out.expense.forEach(c=>st.budget[c.n]=c.amount||0);const tg={};out.saving.forEach(c=>tg[c.n]=c.amount||0);
   st.features=st.features||{};st.features.investSplit=$("investSplit").checked&&out.saving.some(c=>c.k==="investing");
   if(st.features.investSplit){st.invest={short:parseNum($("invShort").value)||0,long:parseNum($("invLong").value)||0};const ic=out.saving.filter(c=>c.k==="investing");if(ic.length){ic.forEach(c=>tg[c.n]=0);tg[ic[0].n]=st.invest.short+st.invest.long}}
@@ -1402,7 +1411,7 @@ let wz=null;
 function draftFromDocs(rerun){
   const st=docs.settings||{};const L=LANG;const rec=recList();
   const cats=[];const have=new Map(catList("expense").map(c=>[c.k+"|"+c.n,c]));
-  if(rerun&&st.cats&&st.cats.expense&&st.cats.expense.length){st.cats.expense.forEach(c=>cats.push({k:c.k,n:c.n,on:true,amount:+(st.budget||{})[c.n]||""}));
+  if(rerun&&st.cats&&st.cats.expense&&st.cats.expense.length){st.cats.expense.forEach(c=>cats.push({k:c.k,n:c.n,on:true,amount:+(st.budget||{})[c.n]||"",pot:!!c.pot}));
     KINDS.expense.forEach(k=>{if(!cats.some(c=>c.k===k))cats.push({k,n:defName(k,"expense",L),on:false,amount:""})})}
   else KINDS.expense.forEach(k=>cats.push({k,n:defName(k,"expense",L),on:!["kids","insurance","subscriptions"].includes(k),amount:""}));
   const salaryR=rec.find(r=>kindOf(r.cat,"income")==="salary");
@@ -1553,7 +1562,7 @@ async function finishWizard(){
   const used=ty=>new Set(allItems().filter(x=>x.i.type===ty).map(x=>x.i.cat));
   const prevCats=st.cats&&st.cats.expense&&st.cats.expense.length?st.cats:{expense:[],saving:[],income:[]};
   d.cats.forEach(c=>{const prev=prevCats.expense.find(p=>p.k===c.k&&p.n!==c.n&&!d.cats.some(z=>z.n===p.n));if(prev&&c.on&&!c.custom)renameCat(prev.n,c.n,"expense")});
-  const exp=d.cats.filter(c=>c.on).map(c=>({n:c.n,k:c.k==="other"&&c.custom?guessKind(c.n,"expense"):c.k}));used("expense").forEach(n=>{if(!exp.some(c=>c.n===n))exp.push({n,k:kindOf(n,"expense")})});
+  const exp=d.cats.filter(c=>c.on).map(c=>Object.assign({n:c.n,k:c.k==="other"&&c.custom?guessKind(c.n,"expense"):c.k},c.pot?{pot:true}:{}));used("expense").forEach(n=>{if(!exp.some(c=>c.n===n))exp.push({n,k:kindOf(n,"expense")})});
   const sav=[...prevCats.saving];const ensureCat=(list,k,ty)=>{let c=list.find(x=>x.k===k);if(!c){c={n:defName(k,ty,L),k};list.push(c)}return c.n};
   const emN=+d.save.emergency||d.save.months?ensureCat(sav,"emergency","saving"):null;const ivN=+d.save.invest?ensureCat(sav,"investing","saving"):null;if(d.save.goals.some(g=>g.name))ensureCat(sav,"goal","saving");if(!sav.length)ensureCat(sav,"emergency","saving");
   const inc=[...prevCats.income];const salN=d.pay.kind!=="none"?ensureCat(inc,"salary","income"):null;d.otherIncome.forEach(o=>{if(o.name&&o.amount)o.cat=o.cat&&inc.some(c=>c.n===o.cat)?o.cat:ensureCat(inc,o.kind||"other","income")});

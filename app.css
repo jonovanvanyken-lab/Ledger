@@ -503,3 +503,10 @@ body.private #hideBtn{color:var(--accent);border-color:var(--accent)}
 .wz-row:not(.cat)>.x{flex:none}
 .wz-bill-detail{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,8.5em)}
 @media (max-width:430px){.wz-row:not(.cat)>input:first-child{flex-basis:calc(100% - 44px)}}
+
+.cat-row{grid-template-columns:1fr 6.2em auto auto}
+#setInc .cat-row,#setSave .cat-row{grid-template-columns:1fr 6.2em auto}
+#setInc .cat-row{grid-template-columns:1fr auto}
+.pot-l{display:flex;flex-direction:column;align-items:center;gap:1px;font-size:10.5px;color:var(--muted);line-height:1.1;cursor:pointer}
+.pot-l input{width:18px;height:18px;margin:0;accent-color:var(--accent)}
+.tag.pot{margin-left:6px;background:var(--accent-soft);color:var(--accent)}
