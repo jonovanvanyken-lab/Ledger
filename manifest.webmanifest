@@ -1,7 +1,7 @@
 {
   "name": "Kč Ledger",
   "short_name": "Kč Ledger",
-  "description": "Private, encrypted spending and savings tracker that stays on your phone.",
+  "description": "Private, encrypted budgeting app that keeps your data on your own device.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://api.frankfurter.dev https://api.frankfurter.app; worker-src 'self' blob:; manifest-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://api.frankfurter.dev https://api.frankfurter.app https://api.github.com; worker-src 'self' blob:; manifest-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#1d3d8c">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="app.css?v=4">
+<link rel="stylesheet" href="app.css?v=9">
 <title>Kč Ledger</title>
 </head>
 <body>
@@ -22,7 +22,11 @@
 <main id="lock" class="lock">
   <div class="lock-card">
     <div class="brand"><span class="mark">Kč</span><h1>Kč Ledger</h1></div>
-    <p class="lock-sub" id="lockSub">Checking this phone…</p>
+    <div class="langs" id="lockLangs" role="group" aria-label="Language" hidden>
+      <button type="button" data-lang="en" aria-pressed="true">English</button>
+      <button type="button" data-lang="cs" aria-pressed="false">Čeština</button>
+    </div>
+    <p class="lock-sub" id="lockSub">Checking this device…</p>
     <button class="primary" id="bioBtn" type="button" hidden>Unlock with Face ID</button>
     <form id="lockForm" autocomplete="off" hidden>
       <label class="label" for="pass1" id="pass1Label">Passcode</label>
@@ -34,8 +38,20 @@
       <button class="primary" id="lockBtn" type="submit">Unlock</button>
       <p class="hint" id="lockHint"></p>
     </form>
-    <p class="fine" id="lockVer">Kč Ledger · version 4</p>
-    <p class="fine" id="lockFine" hidden>Your entries are encrypted on this phone. Nobody, including the app's host, can read them. There is no passcode reset: if you forget it, only a backup can bring your data back.</p>
+    <p class="fine" id="lockVer">Kč Ledger · version 9</p>
+    <p class="fine" id="lockFine" hidden>Your entries are encrypted on this device. Nobody, including the app's host, can read them. There is no passcode reset: if you forget it, only a backup can bring your data back.</p>
+  </div>
+</main>
+
+<!-- First-run questionnaire -->
+<main id="wizard" class="wizard" hidden>
+  <div class="wz-top"><span class="wz-step" id="wzStep"></span><button class="icon-btn" id="wzClose" type="button" hidden>Close</button></div>
+  <div class="wz-bar" aria-hidden="true"><i id="wzProgress"></i></div>
+  <div class="wz-body" id="wzBody"></div>
+  <div class="wz-nav">
+    <button class="icon-btn" id="wzBack" type="button">Back</button>
+    <p class="hint err" id="wzHint" role="status"></p>
+    <button class="primary" id="wzNext" type="button">Next</button>
   </div>
 </main>
 
@@ -46,20 +62,49 @@
     <span class="m" id="monthLabel">—</span>
     <button class="icon-btn" id="nextM" aria-label="Next month">›</button>
     <span class="spacer"></span>
-    <button class="icon-btn cur-btn" id="curBtn" aria-label="Show amounts in Australian dollars">Kč</button>
-    <button class="icon-btn" id="hideBtn" aria-pressed="false" aria-label="Hide amounts">Hide</button>
-    <button class="icon-btn" id="lockNow" aria-label="Lock now">Lock</button>
+    <button class="icon-btn cur-btn" id="curBtn" aria-label="Switch currency" hidden>Kč</button>
+    <button class="icon-btn ic" id="hideBtn" aria-pressed="false" aria-label="Hide amounts" title="Hide amounts"><svg class="i-eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><svg class="i-eyeoff" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6C3.8 8.4 2 12 2 12s3.6 7 10 7a9.6 9.6 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg></button>
+    <button class="icon-btn ic" id="lockNow" aria-label="Lock now" title="Lock now"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg></button>
   </header>
 
+  <!-- HEALTH -->
+  <section class="tab" id="tab-health">
+    <p class="h-hello" id="hHello" hidden></p>
+    <div class="health-hero" id="hHero">
+      <div class="health-dial" id="hDial"></div>
+      <div class="health-status">
+        <h2 id="hStatus">—</h2>
+        <p id="hSub"></p>
+      </div>
+      <div class="health-key" id="hKey"><span><i class="kr"></i>Budget used</span><span><i class="kt"></i>Where you'd expect to be today</span></div>
+    </div>
+    <div class="panel health-allow">
+      <span class="label" id="hAllowLabel">You can spend</span>
+      <span class="hbig amt" id="hPerDay">—</span>
+      <span class="hsub" id="hPerDaySub"></span>
+      <div class="hcompare" id="hCompare"></div>
+    </div>
+    <div class="panel">
+      <h2>How it's worked out</h2>
+      <dl class="hsum" id="hSum"></dl>
+      <p class="hforecast" id="hForecast"></p>
+    </div>
+    <div class="panel">
+      <h2>Other checks</h2>
+      <ul class="hchecks" id="hChecks"></ul>
+    </div>
+    <p class="fine hfine">The face follows your everyday spending against your budget. Bills are counted on the days they're due, and one-off costs are left out.</p>
+  </section>
+
   <!-- OVERVIEW -->
-  <section class="tab" id="tab-overview">
+  <section class="tab" id="tab-overview" hidden>
     <div id="banners" class="banners"></div>
     <div id="recap"></div>
     <div class="summary">
       <div class="kpi"><span class="label">Spent</span><span class="big amt" id="kSpent">—</span><span class="sub"><span class="amt" id="kSpentOf">—</span> <span class="pill" id="kSpentPill">—</span></span></div>
       <div class="kpi"><span class="label">Left to spend</span><span class="big amt" id="kLeft">—</span><span class="sub amt" id="kLeftSub">—</span></div>
       <div class="kpi"><span class="label">Saved &amp; invested</span><span class="big amt" id="kSaved">—</span><span class="sub amt" id="kSavedOf">—</span></div>
-      <div class="kpi"><span class="label">Income</span><span class="big amt" id="kIncome">—</span><span class="sub amt" id="kIncomeSub">earned this month</span></div>
+      <div class="kpi"><span class="label">Income</span><span class="big amt" id="kIncome">—</span><span class="sub amt" id="kIncomeSub">—</span></div>
     </div>
     <button class="oneoff-strip" id="oneoffStrip" hidden></button>
 
@@ -70,7 +115,7 @@
     </div>
 
     <div class="panel">
-      <div class="panel-head"><h2>Bills this month</h2><button class="link" id="billsEdit">Edit bills</button></div>
+      <div class="panel-head"><h2>Schedule</h2><button class="link" id="billsEdit">Edit</button></div>
       <ul class="bills" id="bills"></ul>
     </div>
 
@@ -106,8 +151,8 @@
   <!-- ENTRIES -->
   <section class="tab" id="tab-entries" hidden>
     <div class="quick">
-      <button class="quick-btn" id="shotBtn"><span class="qi" aria-hidden="true">▣</span><span><b>Read a screenshot</b><small>Bank app, Revolut or a receipt</small></span></button>
-      <button class="quick-btn" id="importBtn2"><span class="qi" aria-hidden="true">≡</span><span><b>Import bank CSV</b><small>Raiffeisen Movements export</small></span></button>
+      <button class="quick-btn" id="shotBtn"><span class="qi" aria-hidden="true">▣</span><span><b>Read a screenshot</b><small>Banking app or a receipt</small></span></button>
+      <button class="quick-btn" id="importBtn2"><span class="qi" aria-hidden="true">≡</span><span><b>Import a bank file</b><small>CSV from your bank, Revolut or Wise</small></span></button>
     </div>
     <input type="file" id="shotFile" accept="image/*" hidden>
     <input type="file" id="attachFile" accept="image/*" hidden>
@@ -127,7 +172,7 @@
           <details id="shotRawWrap" class="sub-sec" hidden><summary>Text it read</summary><pre id="shotRaw" class="raw"></pre></details>
         </div>
       </div>
-      <p class="fine">The screenshot is read on this phone. It isn't sent anywhere.</p>
+      <p class="fine">The screenshot is read on this device. It isn't sent anywhere.</p>
     </div>
 
     <details class="panel add-panel" id="addPanel">
@@ -139,15 +184,17 @@
       </div>
       <form id="entryForm" class="fields" autocomplete="off">
         <div class="row2">
-          <div class="field"><label class="label" for="fAmt">Amount</label><input id="fAmt" inputmode="decimal" placeholder="e.g. 485" required></div>
-          <div class="field"><label class="label" for="fCur">Currency</label><select id="fCur"><option>CZK</option><option>AUD</option><option>EUR</option></select></div>
+          <div class="field"><label class="label" for="fAmt">Amount</label><input id="fAmt" inputmode="decimal" placeholder="0" required></div>
+          <div class="field"><label class="label" for="fCur">Currency</label><select id="fCur"></select></div>
         </div>
         <div class="field"><label class="label" for="fCat">Category</label><select id="fCat"></select></div>
         <div class="row2 row2-date">
-          <div class="field"><label class="label" for="fNote">Note</label><input id="fNote" maxlength="80" placeholder="Albert, Lidl, tram pass…"></div>
+          <div class="field"><label class="label" for="fNote">Note</label><input id="fNote" maxlength="80" placeholder="Shop, place or what it was"></div>
           <div class="field"><label class="label" for="fDate">Date</label><input id="fDate" type="date" required></div>
         </div>
+        <div class="field"><label class="label" for="fTime">Time (optional)</label><input id="fTime" type="time"></div>
         <label class="check" for="fOneoff"><input type="checkbox" id="fOneoff"> One-off (keep out of the monthly budget)</label>
+        <label class="check kidcheck" for="fKid" id="fKidWrap" hidden><input type="checkbox" id="fKid"> <span id="fKidLabel">For my child</span></label>
         <div class="field"><span class="label">Receipt image (optional)</span>
           <div class="file-pick"><button type="button" class="icon-btn" id="fReceiptBtn">Choose image</button><span class="small muted" id="fReceiptName"></span></div>
           <input type="file" id="fReceipt" accept="image/*" hidden></div>
@@ -169,13 +216,13 @@
     </div>
   </section>
 
-  <!-- GOALS -->
-  <section class="tab" id="tab-goals" hidden>
+  <!-- SAVINGS -->
+  <section class="tab" id="tab-savings" hidden>
     <div class="panel">
       <div class="panel-head"><h2>Goals</h2><button class="link" id="goalAdd">+ New goal</button></div>
       <div id="goals" class="goals"></div>
     </div>
-    <div class="panel">
+    <div class="panel" id="investPanel" hidden>
       <div class="panel-head"><h2>Investing</h2><span class="small muted" id="invNote"></span></div>
       <div class="inv-kpis">
         <div><span class="label">This month</span><span class="big amt" id="invMonth">—</span><span class="sub amt" id="invMonthOf"></span></div>
@@ -185,18 +232,14 @@
       <div id="invChart" class="chart"></div>
       <div class="legend"><span><i class="sw sw-sv"></i>Invested</span><span><i class="sw sw-plan"></i>Monthly target</span></div>
     </div>
-  </section>
-
-  <!-- ACCOUNTS -->
-  <section class="tab" id="tab-accounts" hidden>
     <div class="panel">
-      <div class="panel-head"><h2>Accounts &amp; savings</h2></div>
+      <div class="panel-head"><h2>Accounts &amp; balances</h2></div>
       <div class="total"><span class="label">Total across accounts</span><span class="big amt" id="kNet">—</span><span class="sub" id="kNetSub"></span></div>
       <div class="acct-list" id="accts"></div>
       <form class="addacct" id="acctForm" autocomplete="off">
-        <input id="aName" maxlength="40" placeholder="Name, e.g. ubank savings" aria-label="Account name" required>
+        <input id="aName" maxlength="40" placeholder="Name, e.g. Savings account" aria-label="Account name" required>
         <input id="aBal" inputmode="decimal" placeholder="Balance" aria-label="Balance" required>
-        <select id="aCur" aria-label="Currency"><option>CZK</option><option>AUD</option><option>EUR</option></select>
+        <select id="aCur" aria-label="Currency"></select>
         <button class="icon-btn" type="submit">Add</button>
       </form>
       <p class="fine">Names and balances only. Never store account numbers or logins here.</p>
@@ -206,8 +249,8 @@
       <div id="netChart" class="chart"></div>
       <p class="fine">A point is added each day you update a balance.</p>
     </div>
-    <div class="panel">
-      <div class="panel-head"><h2>From Australia</h2><span class="small muted">Wise transfers into your Czech account</span></div>
+    <div class="panel" id="auPanel" hidden>
+      <div class="panel-head"><h2>Money transferred in</h2><span class="small muted" id="auTitle"></span></div>
       <div class="inv-kpis">
         <div><span class="label">This month</span><span class="big amt" id="auMonth">—</span></div>
         <div><span class="label">Last 12 months</span><span class="big amt" id="auYear">—</span></div>
@@ -216,60 +259,178 @@
     </div>
   </section>
 
-  <!-- SETTINGS -->
-  <section class="tab" id="tab-settings" hidden>
-    <div class="panel">
-      <h2>Import</h2>
-      <p class="small muted">Raiffeisenbank Movements CSVs (select every account's file together so transfers between them are left out), or the starter file from Claude.</p>
-      <button class="icon-btn wide" id="importBtn">Choose files to import</button>
-      <input type="file" id="importFile" accept=".csv,.json,text/csv,application/json" multiple hidden>
+  <!-- CHILD EXPENSES (only when turned on) -->
+  <section class="tab" id="tab-kids" hidden>
+    <div class="panel kid-hero">
+      <h2 id="kidTitle">—</h2>
+      <p class="small muted" id="kidSub"></p>
+      <div id="kidBalance" class="kid-balance"></div>
+      <div class="btnrow wrap">
+        <button class="primary" id="kidSend" type="button">Send a statement</button>
+        <button class="icon-btn" id="kidAdd" type="button">The other parent paid for something</button>
+        <button class="icon-btn" id="kidRepay" type="button">Record a repayment</button>
+      </div>
     </div>
     <div class="panel">
-      <h2>Backup</h2>
-      <p class="small muted">Your data lives only on this phone. Save an encrypted backup to iCloud Drive after each import. It opens with your passcode. <span id="lastBackup"></span></p>
-      <div class="btnrow"><button class="primary" id="backupBtn">Save encrypted backup</button><button class="icon-btn" id="restoreBtn">Restore a backup</button><button class="icon-btn" id="csvBtn">Export CSV</button></div>
+      <div class="panel-head"><h2 id="kidMonthTitle">—</h2><button class="link" id="kidMark" type="button">Mark expenses</button></div>
+      <div id="kidMonth" class="kid-month"></div>
+      <ul id="kidList" class="ledger kid-list"></ul>
+    </div>
+    <div class="panel">
+      <h2 id="kidSuggTitle">Suggestions</h2>
+      <p class="small muted" id="kidSuggNote"></p>
+      <ul id="kidSugg" class="kid-sugg"></ul>
+    </div>
+    <div class="panel">
+      <h2>Last six months</h2>
+      <div id="kidChart" class="chart"></div>
+    </div>
+    <p class="fine hfine">Statements use calendar months. Expenses you mark still count in your own budget; repayments go to this balance rather than your income.</p>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="tab" id="tab-settings" hidden>
+    <details class="panel set-sec" id="secProfile" open>
+      <summary><h2>You</h2></summary>
+      <div class="fields">
+        <div class="field"><label class="label" for="setName">Your name</label><input id="setName" maxlength="40" autocomplete="off" placeholder="Optional"></div>
+        <div class="inline2">
+          <div class="field"><label class="label" for="setLang">Language</label><select id="setLang"><option value="en">English</option><option value="cs">Čeština</option></select></div>
+          <div class="field"><label class="label" for="setTheme">Theme</label><select id="setTheme"><option value="system">Match my phone</option><option value="light">Light</option><option value="dark">Dark</option></select></div>
+        </div>
+        <button class="icon-btn wide" id="rerunSetup" type="button">Go through the setup questions again</button>
+      </div>
+    </details>
+
+    <details class="panel set-sec" id="secMoney">
+      <summary><h2>Currency &amp; exchange rates</h2></summary>
+      <div class="fields">
+        <div class="inline2">
+          <div class="field"><label class="label" for="setCur">Main currency</label><select id="setCur"></select></div>
+          <div class="field"><label class="label" for="setCur2">Second currency</label><select id="setCur2"></select></div>
+        </div>
+        <p class="hint" id="curHint"></p>
+        <label class="check" for="autoRates"><input type="checkbox" id="autoRates"> Update daily from the European Central Bank reference rate</label>
+        <p class="fine" id="ratesInfo"></p>
+        <div class="set-grid" id="rateRows"></div>
+        <div class="btnrow"><button class="icon-btn" id="ratesNow" type="button">Update now</button><button class="primary" id="ratesSave" type="button" disabled>Save rates</button></div>
+        <p class="fine">Checking rates contacts one public site and sends nothing about you or your money.</p>
+      </div>
+    </details>
+
+    <details class="panel set-sec" id="secPay">
+      <summary><h2>Budget month</h2></summary>
+      <div class="fields">
+        <div class="field"><label class="label" for="setPeriod">Each budget month runs</label><select id="setPeriod"><option value="calendar">Calendar month</option><option value="payday">Payday to payday</option></select></div>
+        <div class="field" id="setPaydayWrap" hidden><label class="label" for="setPayday">Payday</label><select id="setPayday"></select></div>
+      </div>
+    </details>
+
+    <details class="panel set-sec" id="secBudget">
+      <summary><h2>Categories &amp; budgets</h2></summary>
+      <div class="panel-head"><span class="label sec">Spending, with monthly budgets</span><button class="link" id="catAdd" type="button">+ Add</button></div>
+      <div class="cat-list" id="setCats"></div>
+      <p class="small muted" id="catTotal"></p>
+      <div class="panel-head"><span class="label sec">Saving, with monthly targets</span><button class="link" id="saveAdd" type="button">+ Add</button></div>
+      <div class="cat-list" id="setSave"></div>
+      <div id="splitWrap" class="sub-sec">
+        <label class="check" for="investSplit"><input type="checkbox" id="investSplit"> Split investing into short term and long term</label>
+        <div class="inline2" id="splitFields" hidden>
+          <div class="field"><label for="invShort" class="small muted">For around 2 years</label><input id="invShort" inputmode="decimal" class="amt"></div>
+          <div class="field"><label for="invLong" class="small muted">Long term (5+ years)</label><input id="invLong" inputmode="decimal" class="amt"></div>
+        </div>
+      </div>
+      <div class="panel-head"><span class="label sec">Income</span><button class="link" id="incAdd" type="button">+ Add</button></div>
+      <div class="cat-list" id="setInc"></div>
+      <div class="btnrow"><button class="primary" id="saveSettings" type="button" disabled>Save changes</button><span class="hint" id="setHint"></span></div>
+      <p class="fine">Renaming a category renames it on every entry. Removing one moves its entries to another category of the same type.</p>
+    </details>
+
+    <details class="panel set-sec" id="secRecurring">
+      <summary><h2>Pay, bills &amp; reminders</h2></summary>
+      <div class="panel-head"><span class="small muted">Recurring items</span><button class="link" id="recAdd" type="button">+ New</button></div>
+      <p class="small muted">Salary, transfers to savings and bills. Items set to add automatically appear in your ledger at their date and time; when the bank export arrives, the bank's version replaces them.</p>
+      <ul id="recList" class="rec-list"></ul>
+      <h3>Reminders</h3>
+      <p class="small muted">Your phone's calendar delivers the reminders, even when Kč Ledger is closed. Nothing goes through a server.</p>
+      <label class="check" for="icsAmounts"><input type="checkbox" id="icsAmounts"> Show amounts in the reminders (they'd be stored in your calendar)</label>
+      <div class="btnrow"><button class="primary" id="icsBtn" type="button">Add reminders to my calendar</button></div>
+      <p class="hint" id="icsHint"></p>
+    </details>
+
+    <details class="panel set-sec" id="secImport">
+      <summary><h2>Importing</h2></summary>
+      <div class="fields">
+        <button class="primary wide" id="importBtn" type="button">Choose files to import</button>
+        <input type="file" id="importFile" accept=".csv,.txt,.json,text/csv,application/json" multiple hidden>
+        <div class="field"><label class="label" for="setImport">Main bank</label><select id="setImport"></select></div>
+        <p class="small" id="importHow"></p>
+        <div class="field"><label class="label" for="setOwn">Your own account numbers</label><textarea id="setOwn" rows="2" placeholder="One per line"></textarea>
+          <span class="fine">Transfers between these are left out of spending and income. They're learned from your imports too.</span></div>
+        <div class="btnrow"><span class="small muted" id="mapsInfo"></span><button class="link" id="mapsReset" type="button">Forget column matches</button></div>
+      </div>
+    </details>
+
+    <details class="panel set-sec" id="secKids">
+      <summary><h2>Child expenses</h2></summary>
+      <div class="fields">
+        <label class="check" for="kOn"><input type="checkbox" id="kOn"> Track child expenses to share with the other parent</label>
+        <div id="kFields" class="fields" hidden>
+          <div class="inline2">
+            <div class="field"><label class="label" for="kChild">Child's name</label><input id="kChild" maxlength="30" autocomplete="off"></div>
+            <div class="field"><label class="label" for="kName">Name for the tab</label><input id="kName" maxlength="40" autocomplete="off"></div>
+          </div>
+          <div class="field"><label class="label" for="kOther">Other parent's name</label><input id="kOther" maxlength="30" autocomplete="off"></div>
+          <div class="field"><label class="label" for="kShare">Usual split</label><select id="kShare"></select></div>
+          <label class="check" for="kBal"><input type="checkbox" id="kBal"> Keep a running balance of who owes whom</label>
+        </div>
+        <p class="fine">Turning this off hides the tab. Marked expenses keep their mark, so turning it on again brings everything back.</p>
+      </div>
+    </details>
+
+    <details class="panel set-sec" id="secBackup">
+      <summary><h2>Backup</h2></summary>
+      <p class="small muted">Your data lives only on this device unless you turn on sync. Save an encrypted backup to your files now and then. It opens with your passcode. <span id="lastBackup"></span></p>
+      <div class="field"><label class="label" for="backupEvery">Remind me to back up</label><select id="backupEvery"><option value="7">Every week</option><option value="30">Every month</option><option value="0">Never</option></select></div>
+      <div class="btnrow wrap"><button class="primary" id="backupBtn" type="button">Save encrypted backup</button><button class="icon-btn" id="restoreBtn" type="button">Restore a backup</button><button class="icon-btn" id="csvBtn" type="button">Export CSV</button></div>
       <input type="file" id="restoreFile" accept=".json,application/json" hidden>
       <div id="restoreWrap" class="fields" hidden>
         <label class="label" for="restorePass">Passcode of that backup</label>
         <input id="restorePass" type="password" autocomplete="off">
-        <div class="btnrow"><button class="primary" id="restoreGo">Restore</button><button class="icon-btn" id="restoreCancel">Cancel</button></div>
+        <div class="btnrow"><button class="primary" id="restoreGo" type="button">Restore</button><button class="icon-btn" id="restoreCancel" type="button">Cancel</button></div>
       </div>
       <p class="hint" id="backupHint"></p>
-    </div>
-    <div class="panel">
-      <h2>Exchange rates</h2>
-      <label class="check" for="autoRates"><input type="checkbox" id="autoRates"> Update daily from the European Central Bank reference rate</label>
-      <p class="fine" id="ratesInfo"></p>
-      <div class="set-grid">
-        <div class="field"><label for="rAUD" class="small muted">1 AUD = … CZK</label><input id="rAUD" inputmode="decimal"></div>
-        <div class="field"><label for="rEUR" class="small muted">1 EUR = … CZK</label><input id="rEUR" inputmode="decimal"></div>
+    </details>
+
+    <details class="panel set-sec" id="secSync">
+      <summary><h2>Sync between devices</h2><span class="pill" id="syncPill">Off</span></summary>
+      <div id="syncPanel">
+        <p class="small muted">Keeps your phone and computer in step through a private GitHub repository. Everything is encrypted on the device first, so GitHub only ever stores scrambled data.</p>
+        <div id="syncSetup" class="fields">
+          <div class="field"><label class="label" for="syncRepo">Private repository</label><input id="syncRepo" placeholder="your-username/ledger-data" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+          <div class="field"><label class="label" for="syncToken">Access token</label><input id="syncToken" type="password" placeholder="github_pat_…" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+          <button class="primary" id="syncConnect" type="button">Connect and sync</button>
+        </div>
+        <div id="syncOn" hidden>
+          <p class="small" id="syncInfo"></p>
+          <div class="btnrow"><button class="primary" id="syncNow" type="button">Sync now</button><button class="icon-btn" id="syncOff" type="button">Disconnect this device</button></div>
+        </div>
+        <div id="syncJoin" class="fields" hidden>
+          <p class="small">This repository already holds a Kč Ledger with its own passcode. Enter that passcode to join it. Entries on this device will be merged in, and that passcode becomes this device's passcode.</p>
+          <input id="syncJoinPass" type="password" placeholder="Passcode of the synced ledger" aria-label="Passcode of the synced ledger" autocomplete="off">
+          <div class="btnrow"><button class="primary" id="syncJoinGo" type="button">Join</button><button class="icon-btn" id="syncJoinCancel" type="button">Cancel</button></div>
+        </div>
+        <p class="hint" id="syncHint" role="status"></p>
       </div>
-      <div class="btnrow"><button class="icon-btn" id="ratesNow">Update now</button><button class="primary" id="ratesSave" disabled>Save rates</button></div>
-      <p class="fine">Checking rates contacts one public site and sends nothing about you or your money.</p>
-    </div>
-    <div class="panel">
-      <h2>Budget</h2>
-      <div class="label sec">Monthly spending (CZK)</div><div class="set-grid" id="setBudget"></div>
-      <div class="label sec">Monthly savings targets (CZK)</div><div class="set-grid" id="setSave"></div>
-      <div class="label sec">How your monthly investing is split (CZK)</div>
-      <div class="set-grid">
-        <div class="field"><label for="invShort" class="small muted">For around 2 years</label><input id="invShort" inputmode="decimal" class="amt"></div>
-        <div class="field"><label for="invLong" class="small muted">Long-term (5+ years)</label><input id="invLong" inputmode="decimal" class="amt"></div>
-      </div>
-      <div class="btnrow"><button class="primary" id="saveSettings" disabled>Save changes</button><span class="hint" id="setHint"></span></div>
-    </div>
-    <div class="panel" id="billsPanel">
-      <h2>Recurring bills</h2>
-      <p class="small muted">Bills are marked paid when an entry with a matching word and a similar amount appears that month.</p>
-      <div id="billsEditor" class="bills-editor"></div>
-      <div class="btnrow"><button class="icon-btn" id="billAdd">+ Add a bill</button><button class="primary" id="billsSave" disabled>Save bills</button></div>
-    </div>
-    <div class="panel">
-      <h2>Security</h2>
+    </details>
+
+    <details class="panel set-sec" id="secSecurity">
+      <summary><h2>Security</h2></summary>
       <div class="bio-row"><div><b>Face ID unlock</b><p class="small muted" id="bioInfo">Unlock with Face ID instead of typing your passcode. Your passcode keeps working too.</p></div>
-        <button class="icon-btn" id="bioToggle">Turn on</button></div>
+        <button class="icon-btn" id="bioToggle" type="button">Turn on</button></div>
       <div class="field"><label class="label" for="autoLock">Lock automatically after</label>
         <select id="autoLock"><option value="1">1 minute away</option><option value="5">5 minutes away</option><option value="15">15 minutes away</option></select></div>
+      <label class="check" for="hideOpen"><input type="checkbox" id="hideOpen"> Hide amounts each time I open the app</label>
       <details class="sub-sec"><summary>Change passcode</summary>
         <form id="passForm" class="fields" autocomplete="off">
           <input id="pOld" type="password" placeholder="Current passcode" aria-label="Current passcode" autocomplete="off">
@@ -279,23 +440,25 @@
           <p class="hint" id="passHint"></p>
         </form>
       </details>
-      <details class="sub-sec"><summary>Erase everything on this phone</summary>
-        <p class="small muted">Deletes every entry, account, image and setting from this phone. Save a backup first if you may want them back.</p>
-        <button class="danger" id="eraseBtn">Erase all data</button>
+      <details class="sub-sec"><summary>Erase everything on this device</summary>
+        <p class="small muted">Deletes every entry, account, image and setting from this device. Save a backup first if you may want them back.</p>
+        <button class="danger" id="eraseBtn" type="button">Erase all data</button>
       </details>
-    </div>
+    </details>
+    <p class="fine hfine">Kč Ledger · version 9</p>
   </section>
 
   <nav class="tabbar" aria-label="Sections">
-    <button data-tab="overview" aria-current="page">Overview</button>
+    <button data-tab="health" aria-current="page">Health</button>
+    <button data-tab="overview">Overview</button>
     <button data-tab="entries">Entries</button>
-    <button data-tab="goals">Goals</button>
-    <button data-tab="accounts">Accounts</button>
+    <button data-tab="savings">Savings</button>
+    <button data-tab="kids" id="tabKids" hidden>Child</button>
     <button data-tab="settings">Settings</button>
   </nav>
 </div>
 
-<!-- Bottom sheet used by the entry and goal editors -->
+<!-- Bottom sheet used by the editors -->
 <div id="sheet" class="sheet-wrap" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
     <div class="sheet-head"><h2 id="sheetTitle">Edit</h2><button class="icon-btn" id="sheetClose">Close</button></div>
@@ -309,7 +472,9 @@
   <div class="viewer-bar"><button class="icon-btn" id="viewNext">Next image</button><span class="spacer"></span><button class="danger" id="viewDel">Remove image</button></div>
 </div>
 <div id="toast" class="toast" role="status" hidden></div>
-<script src="rbimport.js?v=4"></script>
-<script src="app.js?v=4"></script>
+<script src="i18n.js?v=9"></script>
+<script src="import.js?v=9"></script>
+<script src="report.js?v=9"></script>
+<script src="app.js?v=9"></script>
 </body>
 </html>
