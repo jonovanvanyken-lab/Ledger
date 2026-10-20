@@ -239,17 +239,20 @@ function allItems(){const out=[];monthKeys().forEach(k=>items(k).forEach(i=>out.
 function allIds(){return new Set(allItems().map(x=>x.i.id))}
 function partsOf(i){return i.type==="expense"&&Array.isArray(i.parts)&&i.parts.length?i.parts:[{cat:i.cat,czk:Number(i.czk)||0}]}
 function totalsList(list){
-  const tt={expense:0,oneoff:0,saving:0,income:0,fromIn:0,pot:0,byCat:{}};const pots=potSet();
+  const tt={expense:0,oneoff:0,saving:0,income:0,fromIn:0,pot:0,billcat:0,byCat:{}};const pots=potSet(),bcs=billCatSet();
   list.forEach(i=>{const v=Number(i.czk)||0;
-    if(i.type==="expense"){if(i.oneoff){tt.oneoff+=v;return}tt.expense+=v;partsOf(i).forEach(p=>{const c=Number(p.czk)||0;tt.byCat["expense:"+p.cat]=(tt.byCat["expense:"+p.cat]||0)+c;if(pots.has(p.cat))tt.pot+=c})}
+    if(i.type==="expense"){if(i.oneoff){tt.oneoff+=v;return}tt.expense+=v;partsOf(i).forEach(p=>{const c=Number(p.czk)||0;tt.byCat["expense:"+p.cat]=(tt.byCat["expense:"+p.cat]||0)+c;if(pots.has(p.cat))tt.pot+=c;else if(bcs.has(p.cat))tt.billcat+=c})}
     else if(i.type==="income"){if(i.childRepay)return;if(isTransferCat(i.cat))tt.fromIn+=v;else tt.income+=v;tt.byCat["income:"+i.cat]=(tt.byCat["income:"+i.cat]||0)+v}
     else{tt.saving+=v;tt.byCat["saving:"+i.cat]=(tt.byCat["saving:"+i.cat]||0)+v}});
-  tt.everyday=tt.expense-tt.pot;return tt;
+  tt.everyday=tt.expense-tt.pot-tt.billcat;return tt;
 }
 // categories with their own pot (travel, hobbies…) stay out of the daily allowance and the Health face
 const potSet=()=>new Set(catList("expense").filter(c=>c.pot).map(c=>c.n));
-const everydayCzk=i=>i.type!=="expense"||i.oneoff?0:(()=>{const ps=potSet();return partsOf(i).reduce((a,p)=>a+(ps.has(p.cat)?0:Number(p.czk)||0),0)})();
-const everydayBudget=s=>{const ps=potSet();return EXP_CATS.reduce((a,c)=>a+(ps.has(c)?0:s.budget[c]||0),0)};
+// categories that hold a recurring bill (rent, energy, phone…) are paid as bills, whatever the amount, so they stay out of the daily allowance too
+const billCatSet=()=>new Set(((docs.recurring||{}).list||[]).filter(r=>r&&r.name&&typeOfCat(r.cat)==="expense").map(r=>r.cat));
+const outSet=()=>{const s=potSet();billCatSet().forEach(c=>s.add(c));return s};
+const everydayCzk=i=>i.type!=="expense"||i.oneoff?0:(()=>{const ps=outSet();return partsOf(i).reduce((a,p)=>a+(ps.has(p.cat)?0:Number(p.czk)||0),0)})();
+const everydayBudget=s=>{const ps=outSet();return EXP_CATS.reduce((a,c)=>a+(ps.has(c)?0:s.budget[c]||0),0)};
 const totals=k=>totalsList(items(k));
 const budgetTotal=s=>EXP_CATS.reduce((a,c)=>a+s.budget[c],0);
 const targetTotal=s=>SAVE_CATS.reduce((a,c)=>a+s.targets[c],0);
@@ -492,7 +495,7 @@ function healthCalc(p){
   const normal=Math.max(0,B-planned)/dim;
   let plan=0;for(let d=1;d<=today;d++)plan+=normal+bills.filter(b=>b.idx===d).reduce((a,b)=>a+b.amount,0);
   const spentToday=curM?pItems(p).filter(i=>i.date===tI).reduce((a,i)=>a+everydayCzk(i),0):0;
-  const o={B,S,U,upcoming,planned,paid,dim,today,daysLeft,normal,plan,spentToday,oneoff:tt.oneoff,pot:tt.pot,mode:!B?"nobudget":future?"future":curM?"current":"past"};
+  const o={B,S,U,upcoming,planned,paid,dim,today,daysLeft,normal,plan,spentToday,oneoff:tt.oneoff,pot:tt.pot,billcat:tt.billcat,mode:!B?"nobudget":future?"future":curM?"current":"past"};
   if(o.mode==="current"){o.left=B-S-U;o.perDay=o.left/daysLeft;o.r=o.left<0?0:(normal>0?o.perDay/normal:1);
     const everyday=Math.max(0,S-paid),rate=everyday/Math.max(1,today);o.rate=rate;o.projected=S+rate*(dim-today)+U;o.forecastOk=today>=3}
   else if(o.mode==="past"){o.left=B-S;o.r=S<=B?1.15:Math.max(0,1-(S-B)/B*3)}else o.r=null;
@@ -547,10 +550,11 @@ function renderHealth(){
   }
   const dl=$("hSum");dl.replaceChildren();const row=(op,label,note,val,tot)=>{const dt=el("dt","",op),dd=el("dd",tot?"tot":"",label);if(note)dd.appendChild(el("span","note",note));dl.append(dt,dd,el("dd","v amt"+(tot?" tot":""),val))};
   const oneNote=[o.oneoff?t("Leaves out {x} of one-off costs",{x:fmt(o.oneoff)}):"",o.pot?t("Leaves out {x} spent from your own pots",{x:fmt(o.pot)}):""].filter(Boolean).join(" · ")||null;
-  if(o.mode==="current"){row("",t("Spending budget for the period"),null,fmt(o.B));row("−",t("Spent so far"),oneNote,fmt(o.S));
-    row("−",t("Bills still to come"),o.upcoming.length?o.upcoming.map(b=>b.x.r.name+" ("+dDay(b.x.dIso)+")").join(", "):t("None left this period"),fmt(o.U));
+  const bc=[...billCatSet()].filter(c=>EXP_CATS.includes(c));const budNote=bc.length?t("Everyday categories only. Bills ({l}) and own pots are kept separate.",{l:bc.join(", ")}):null;
+  if(o.mode==="current"){row("",t("Spending budget for the period"),budNote,fmt(o.B));row("−",t("Spent so far"),oneNote,fmt(o.S));
+    if(o.upcoming.length)row("−",t("Bills still to come"),o.upcoming.map(b=>b.x.r.name+" ("+dDay(b.x.dIso)+")").join(", "),fmt(o.U));
     row("=",t("Left for everyday spending"),null,fmt(o.left),true);row("÷",t("Days left, including today"),null,String(o.daysLeft));row("=",t("Each day"),null,o.left<0?fmt(0):fmt(o.perDay),true)}
-  else if(o.mode==="past"){row("",t("Spending budget for the period"),null,fmt(o.B));row("−",t("Spent"),oneNote,fmt(o.S));row("=",o.left>=0?t("Left over"):t("Over budget"),null,fmt(Math.abs(o.left)),true)}
+  else if(o.mode==="past"){row("",t("Spending budget for the period"),budNote,fmt(o.B));row("−",t("Spent"),oneNote,fmt(o.S));row("=",o.left>=0?t("Left over"):t("Over budget"),null,fmt(Math.abs(o.left)),true)}
   else if(o.mode==="future"){row("",t("Spending budget for the period"),null,fmt(o.B));row("−",t("Bills planned"),null,fmt(o.planned));row("=",t("For everyday spending"),null,fmt(o.B-o.planned),true)}
   const fc=$("hForecast");fc.textContent="";
   if(o.mode==="current"&&o.forecastOk){const diff=o.B-o.projected;fc.textContent=t(diff>=0?"At your pace so far ({r} a day on everyday spending), you'd finish about {x} under budget.":"At your pace so far ({r} a day on everyday spending), you'd finish about {x} over budget.",{r:fmt(o.rate),x:fmt(Math.abs(diff))})}
@@ -860,7 +864,7 @@ function billStatus(p){
     out.push({r,ty,hit,st,label,dIso,dueSoon,idx:dayIdx(p,dIso)})})});
   return out.sort((a,b)=>a.dIso.localeCompare(b.dIso)||(a.r.time||"").localeCompare(b.r.time||""));
 }
-function monthBills(p){const ps=potSet();return billStatus(p).filter(x=>x.ty==="expense"&&!ps.has(x.r.cat)).map(x=>({x,amount:recCzk(x.r),idx:x.idx}))}
+function monthBills(p){const ps=outSet();return billStatus(p).filter(x=>x.ty==="expense"&&!ps.has(x.r.cat)).map(x=>({x,amount:recCzk(x.r),idx:x.idx}))}
 
 /* ---------- recurring items editor and calendar reminders ---------- */
 function renderRecList(){
@@ -1928,7 +1932,7 @@ function flowData(p){
   const tt=totalsP(p),ps=potSet(),ic=investCats();
   const src=Object.entries(tt.byCat).filter(([k,v])=>k.startsWith("income:")&&v>0).map(([k,v])=>({n:k.slice(7),v})).sort((a,b)=>b.v-a.v);
   if(src.length>4){const rest=src.splice(3);src.push({n:t("Other income"),v:rest.reduce((a,x)=>a+x.v,0)})}
-  let bills=0;billStatus(p).forEach(x=>{if(x.ty==="expense"&&x.hit&&!x.hit.oneoff&&!ps.has(x.r.cat))bills+=+x.hit.czk||0});
+  const bills=tt.billcat;
   const inv=ic.reduce((a,c)=>a+(tt.byCat["saving:"+c]||0),0);
   const out=[{n:t("Bills"),v:bills,c:"var(--c3)"},{n:t("Everyday spending"),v:Math.max(0,tt.expense-tt.pot-bills),c:"var(--c1)"},{n:t("Own pots"),v:tt.pot,c:"var(--c4)"},
     {n:t("One-offs"),v:tt.oneoff,c:"var(--c7)"},{n:t("Saved"),v:tt.saving-inv,c:"var(--c2)"},{n:t("Invested"),v:inv,c:"var(--c6)"}].filter(x=>x.v>=1);
