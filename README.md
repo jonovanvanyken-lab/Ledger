@@ -62,3 +62,11 @@ Upload the changed files to the repository. The app checks for a new version eac
 ## Credits
 
 Text recognition: tesseract.js (Apache 2.0). PDF statements: jsPDF (MIT) with a subset of DejaVu Sans (free licence). Licences are in `ocr/` and `vendor/`.
+
+## Version 11
+
+- **Own pots** (e.g. Travel) keep their own budget, stay out of the daily allowance and carry what's left into the next month.
+- **Bills** (any category with a recurring bill) stay out of the daily allowance whatever they cost. Anything over a bill's budget comes out of everyday spending, or from an account you choose in Settings → Bills over budget, automatically up to a monthly limit and with your OK above it.
+- **Plan** (Settings → Categories & budgets) checks your regular income against your spending budgets and savings targets.
+- **Display** (Settings) switches each chart and graphic on or off, plus animations and celebrations. Empty sections hide themselves.
+- New: one-off check after imports, spending alerts, Year in review, Owed & owing, money-flow chart, pot and goal jars, celebrations and the under-budget streak.

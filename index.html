@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="app.css?v=10">
+<link rel="stylesheet" href="app.css?v=11.1">
 <title>Kč Ledger</title>
 </head>
 <body>
@@ -38,7 +38,7 @@
       <button class="primary" id="lockBtn" type="submit">Unlock</button>
       <p class="hint" id="lockHint"></p>
     </form>
-    <p class="fine" id="lockVer">Kč Ledger · version 10</p>
+    <p class="fine" id="lockVer">Kč Ledger · version 11</p>
     <p class="fine" id="lockFine" hidden>Your entries are encrypted on this device. Nobody, including the app's host, can read them. There is no passcode reset: if you forget it, only a backup can bring your data back.</p>
   </div>
 </main>
@@ -70,7 +70,7 @@
   <!-- HEALTH -->
   <section class="tab" id="tab-health">
     <p class="h-hello" id="hHello" hidden></p>
-    <div class="health-hero" id="hHero">
+    <div class="health-hero" id="hHero" data-show="face">
       <div class="health-dial" id="hDial"></div>
       <div class="health-status">
         <h2 id="hStatus">—</h2>
@@ -84,12 +84,12 @@
       <span class="hsub" id="hPerDaySub"></span>
       <div class="hcompare" id="hCompare"></div>
     </div>
-    <div class="panel" id="streakPanel" hidden>
+    <div class="panel" id="streakPanel" hidden data-show="streak">
       <div class="panel-head"><h2>Streak</h2><span class="pill" id="streakPill"></span></div>
       <div class="streak" id="streakDots" aria-hidden="true"></div>
       <p class="small muted" id="streakText"></p>
     </div>
-    <div class="panel">
+    <div class="panel" data-show="howcalc">
       <h2>How it's worked out</h2>
       <dl class="hsum" id="hSum"></dl>
       <p class="hforecast" id="hForecast"></p>
@@ -113,44 +113,44 @@
     </div>
     <button class="oneoff-strip" id="oneoffStrip" hidden></button>
 
-    <div class="panel">
+    <div class="panel" data-show="flow" data-auto>
       <div class="panel-head"><h2>Where the money went</h2><span class="small muted" id="flowNote"></span></div>
       <div id="flow" class="chart flow"></div>
     </div>
 
-    <div class="panel">
+    <div class="panel" data-show="pace" data-auto>
       <div class="panel-head"><h2>Spending pace</h2><span class="pill" id="paceNote"></span></div>
       <div id="pace" class="chart"></div>
       <div class="legend"><span><i class="sw sw-sp"></i>Spent so far</span><span><i class="sw sw-plan"></i>Plan, with bills on their days</span></div>
     </div>
 
-    <div class="panel">
+    <div class="panel" data-show="schedule" data-auto>
       <div class="panel-head"><h2>Schedule</h2><button class="link" id="billsEdit">Edit</button></div>
       <ul class="bills" id="bills"></ul>
     </div>
 
-    <div class="panel">
+    <div class="panel" data-show="bars" data-auto>
       <div class="panel-head"><h2>Budget vs actual</h2><span class="small muted">Tap a category to see its entries</span></div>
       <div class="bars" id="bars"></div>
     </div>
 
-    <div class="panel">
+    <div class="panel" data-show="donut" data-auto>
       <h2>Where it went</h2>
       <div class="donut-wrap"><div id="donut" class="donut"></div><ul id="donutLegend" class="donut-legend"></ul></div>
     </div>
 
-    <div class="panel">
+    <div class="panel" data-show="heat" data-auto="spend">
       <div class="panel-head"><h2>Day by day</h2><span class="small muted">Tap a day</span></div>
       <div id="heat" class="heat"></div>
       <div id="dayList" class="day-list"></div>
     </div>
 
-    <div class="panel">
+    <div class="panel" data-show="places" data-auto>
       <div class="panel-head"><h2>Top places</h2><span class="small muted">Last 3 months</span></div>
       <ol id="merchants" class="merchants"></ol>
     </div>
 
-    <div class="panel">
+    <div class="panel" data-show="trend" data-auto>
       <div class="panel-head"><h2>Last six months</h2>
         <div class="legend"><span><i class="sw sw-sp"></i>Spent</span><span><i class="sw sw-one"></i>One-off</span><span><i class="sw sw-sv"></i>Saved</span></div>
       </div>
@@ -229,7 +229,7 @@
 
   <!-- SAVINGS -->
   <section class="tab" id="tab-savings" hidden>
-    <div class="panel" id="jarsPanel" hidden>
+    <div class="panel" id="jarsPanel" hidden data-show="jars">
       <h2>Pots &amp; goals</h2>
       <div id="jars" class="jars"></div>
     </div>
@@ -268,12 +268,12 @@
       </form>
       <p class="fine">Names and balances only. Never store account numbers or logins here.</p>
     </div>
-    <div class="panel">
+    <div class="panel" data-show="net" data-auto>
       <h2>Savings over time</h2>
       <div id="netChart" class="chart"></div>
       <p class="fine">A point is added each day you update a balance.</p>
     </div>
-    <div class="panel" id="auPanel" hidden>
+    <div class="panel" id="auPanel" hidden data-show="transfers" data-auto>
       <div class="panel-head"><h2>Money transferred in</h2><span class="small muted" id="auTitle"></span></div>
       <div class="inv-kpis">
         <div><span class="label">This month</span><span class="big amt" id="auMonth">—</span></div>
@@ -305,7 +305,7 @@
       <p class="small muted" id="kidSuggNote"></p>
       <ul id="kidSugg" class="kid-sugg"></ul>
     </div>
-    <div class="panel">
+    <div class="panel" data-show="kidchart" data-auto>
       <h2>Last six months</h2>
       <div id="kidChart" class="chart"></div>
     </div>
@@ -366,8 +366,29 @@
       </div>
       <div class="panel-head"><span class="label sec">Income</span><button class="link" id="incAdd" type="button">+ Add</button></div>
       <div class="cat-list" id="setInc"></div>
+      <div class="plan" id="planBox"></div>
       <div class="btnrow"><button class="primary" id="saveSettings" type="button" disabled>Save changes</button><span class="hint" id="setHint"></span></div>
       <p class="fine">Renaming a category renames it on every entry. Removing one moves its entries to another category of the same type.</p>
+    </details>
+
+    <details class="panel set-sec" id="secDisplay">
+      <summary><h2>Display</h2></summary>
+      <div class="fields">
+        <p class="small muted">Choose which charts and graphics to show. Sections with nothing in them yet hide themselves until there's data.</p>
+        <div id="dispList" class="disp-list"></div>
+      </div>
+    </details>
+
+    <details class="panel set-sec" id="secCover">
+      <summary><h2>Bills over budget</h2></summary>
+      <div class="fields">
+        <p class="small muted">Bills stay out of your daily allowance. When one comes in higher than its monthly budget, choose where the extra comes from.</p>
+        <div class="field"><label class="label" for="coverSrc">Cover the extra from</label><select id="coverSrc"></select></div>
+        <div class="field" id="coverAutoWrap" hidden><label class="label" for="coverAuto">Cover automatically up to (<span id="coverCur">CZK</span> a month)</label><input id="coverAuto" inputmode="decimal" class="amt" placeholder="0">
+          <span class="fine">Up to this amount is covered without asking. Above it, the app asks you first, on the Health and Overview tabs. Until you answer, the extra comes out of everyday spending.</span></div>
+        <p class="hint" id="coverInfo"></p>
+        <p class="fine">Add accounts on the Savings tab to choose them here. The app keeps track only; it doesn't move money.</p>
+      </div>
     </details>
 
     <details class="panel set-sec" id="secRecurring">
@@ -469,7 +490,7 @@
         <button class="danger" id="eraseBtn" type="button">Erase all data</button>
       </details>
     </details>
-    <p class="fine hfine">Kč Ledger · version 10</p>
+    <p class="fine hfine">Kč Ledger · version 11</p>
   </section>
 
   <nav class="tabbar" aria-label="Sections">
@@ -496,9 +517,9 @@
   <div class="viewer-bar"><button class="icon-btn" id="viewNext">Next image</button><span class="spacer"></span><button class="danger" id="viewDel">Remove image</button></div>
 </div>
 <div id="toast" class="toast" role="status" hidden></div>
-<script src="i18n.js?v=10"></script>
-<script src="import.js?v=10"></script>
-<script src="report.js?v=10"></script>
-<script src="app.js?v=10"></script>
+<script src="i18n.js?v=11.1"></script>
+<script src="import.js?v=11.1"></script>
+<script src="report.js?v=11.1"></script>
+<script src="app.js?v=11.1"></script>
 </body>
 </html>

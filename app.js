@@ -3,7 +3,7 @@
    A random data key encrypts the ledger and images. That key is stored wrapped by your passcode
    (PBKDF2-SHA256, 600k rounds → AES-GCM) and, if you turn it on, by a Face ID passkey (WebAuthn PRF → HKDF → AES-GCM). */
 "use strict";
-const ITER=600000,DAY=864e5,APP_VERSION=10;
+const ITER=600000,DAY=864e5,APP_VERSION=11;
 const $=id=>document.getElementById(id);
 const te=new TextEncoder(),td=new TextDecoder();
 const b64=buf=>{let s="";const b=buf instanceof Uint8Array?buf:new Uint8Array(buf);for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)};
@@ -161,7 +161,7 @@ function armIdle(){clearTimeout(idleT);if(key)idleT=setTimeout(lock,lockMins()*6
 document.addEventListener("visibilitychange",()=>{if(document.hidden)hiddenAt=Date.now();else if(key&&hiddenAt&&Date.now()-hiddenAt>lockMins()*60000)lock()});
 function setPrivate(on){document.body.classList.toggle("private",on);const b=$("hideBtn");if(b){b.setAttribute("aria-pressed",String(on));const l=on?t("Show amounts"):t("Hide amounts");b.setAttribute("aria-label",l);b.title=l}}
 function applyTheme(th){const r=document.documentElement;if(th==="light"||th==="dark")r.dataset.theme=th;else delete r.dataset.theme}
-function applyPrefs(){const s=docs.settings||{};setLang(s.lang||LANG);applyTheme(s.theme);applyCats();fillFilterCats();fillCats()}
+function applyPrefs(){const s=docs.settings||{};setLang(s.lang||LANG);applyTheme(s.theme);applyDisplay();applyCats();fillFilterCats();fillCats()}
 
 /* ---------- Face ID (passkey with the PRF extension) ---------- */
 async function prfKey(out){const base=await crypto.subtle.importKey("raw",out,"HKDF",false,["deriveKey"]);
@@ -363,7 +363,7 @@ function render(){
   if(!$("tab-settings").dataset.dirty)fillSettings();renderRecList();
   renderCharts();
 }
-function renderCharts(){if(!key||!docs.settings||!docs.settings.onboarded)return;renderPace();renderDonut();renderHeat();renderTrend();renderInvChart();renderNet();renderAUChart();renderKidChart();renderFlow()}
+function renderCharts(){if(!key||!docs.settings||!docs.settings.onboarded)return;renderPace();renderDonut();renderHeat();renderTrend();renderInvChart();renderNet();renderAUChart();renderKidChart();renderFlow();autoHide()}
 function renderBars(tt,s){
   const box=$("bars");box.replaceChildren();
   const pp=curP();EXP_CATS.forEach(c=>{const spent=tt.byCat["expense:"+c]||0,pi=potInfo(c,pp),b=pi?pi.avail:s.budget[c];if(!b&&!spent&&!(pi&&pi.carry))return;const p2=b?spent/b:(spent?1.01:0);
@@ -381,6 +381,7 @@ function renderPace(){
   const bills=monthBills(p);const billSum=bills.reduce((a,b)=>a+b.amount,0);const rest=Math.max(0,bt-billSum)/dim;
   const plan=[0],act=[0];const daily=Array(dim+1).fill(0);
   pItems(p).forEach(i=>{const v=everydayCzk(i);if(v){const d=dayIdx(p,i.date);if(d>=1&&d<=dim)daily[d]+=v}});
+  {const bc=billCover(p);const f=bc.total?bc.uncovered/bc.total:0;Object.entries(bc.byIdx).forEach(([d,v])=>{if(d>=1&&d<=dim)daily[d]+=v*f})}
   for(let d=1;d<=dim;d++){plan[d]=plan[d-1]+rest+bills.filter(b=>b.idx===d).reduce((a,b)=>a+b.amount,0);act[d]=act[d-1]+daily[d]}
   const diff=act[upto]-plan[upto];const note=$("paceNote");note.className="pill "+(diff>0?(diff>bt*.05?"bad":"warn"):"ok");note.textContent=(diff>0?t("{x} over plan",{x:fmt(diff)}):t("{x} under plan",{x:fmt(-diff)}))+(curM?" "+t("today"):"");
   const W=boxW(box),H=190,pl2=40,pr=10,pt=10,pb=22;const max=Math.max(plan[dim],act[upto])*1.06||1;
@@ -403,6 +404,7 @@ function renderBills(){
 $("billsEdit").addEventListener("click",()=>{showTab("settings");setTimeout(()=>{const d=$("secRecurring");d.open=true;d.scrollIntoView({behavior:"smooth"})},50)});
 function renderBanners(){
   const box=$("banners");box.replaceChildren();
+  {const bc=billCover(curP());if(bc.pending){const b=el("button","banner warn");b.type="button";b.append(el("span","",t("Bills are {x} over budget. Should {n} cover it?",{x:fmt(bc.pending),n:coverName(bc.src)})));b.addEventListener("click",()=>openCover());box.appendChild(b)}}
   const st=billStatus(period(periodOfDate(new Date()).y,periodOfDate(new Date()).m));
   const late=st.filter(s=>s.st==="late"),soon=st.filter(s=>s.st==="soon"&&s.dueSoon);
   if(late.length){const b=el("div","banner bad");b.append(el("span","",late.length===1?t("{n} looks {l}.",{n:late[0].r.name,l:late[0].label.toLowerCase()}):t("{n} items look late: {l}.",{n:late.length,l:late.map(s=>s.r.name).join(", ")})));box.appendChild(b)}
@@ -486,7 +488,7 @@ function renderTrend(){
 
 /* ---------- health: is this period's spending on track? ---------- */
 function healthCalc(p){
-  const s=settings(),B=everydayBudget(s),tt=totalsP(p),S=tt.everyday,dim=p.days;
+  const s=settings(),B=everydayBudget(s),tt=totalsP(p),bo=billCover(p),S=tt.everyday+bo.uncovered,dim=p.days;
   const curM=isCurP(p),future=isFutureP(p);
   const bills=monthBills(p);const planned=bills.reduce((a,b)=>a+b.amount,0);
   const upcoming=curM?bills.filter(b=>!b.x.hit):[];const U=upcoming.reduce((a,b)=>a+b.amount,0);
@@ -494,8 +496,8 @@ function healthCalc(p){
   const tI=todayIso();const today=curM?dayIdx(p,tI):dim,daysLeft=curM?dim-today+1:0;
   const normal=Math.max(0,B-planned)/dim;
   let plan=0;for(let d=1;d<=today;d++)plan+=normal+bills.filter(b=>b.idx===d).reduce((a,b)=>a+b.amount,0);
-  const spentToday=curM?pItems(p).filter(i=>i.date===tI).reduce((a,i)=>a+everydayCzk(i),0):0;
-  const o={B,S,U,upcoming,planned,paid,dim,today,daysLeft,normal,plan,spentToday,oneoff:tt.oneoff,pot:tt.pot,billcat:tt.billcat,mode:!B?"nobudget":future?"future":curM?"current":"past"};
+  const spentToday=curM?pItems(p).filter(i=>i.date===tI).reduce((a,i)=>a+everydayCzk(i),0)+(bo.total?(bo.byIdx[dayIdx(p,tI)]||0)*bo.uncovered/bo.total:0):0;
+  const o={B,S,U,upcoming,planned,paid,dim,today,daysLeft,normal,plan,spentToday,oneoff:tt.oneoff,pot:tt.pot,billcat:tt.billcat,billOver:bo,mode:!B?"nobudget":future?"future":curM?"current":"past"};
   if(o.mode==="current"){o.left=B-S-U;o.perDay=o.left/daysLeft;o.r=o.left<0?0:(normal>0?o.perDay/normal:1);
     const everyday=Math.max(0,S-paid),rate=everyday/Math.max(1,today);o.rate=rate;o.projected=S+rate*(dim-today)+U;o.forecastOk=today>=3}
   else if(o.mode==="past"){o.left=B-S;o.r=S<=B?1.15:Math.max(0,1-(S-B)/B*3)}else o.r=null;
@@ -549,7 +551,7 @@ function renderHealth(){
     if(o.spentToday)cmp.appendChild(el("span","amt muted","· "+t("spent today {x}",{x:fmt(o.spentToday)})));
   }
   const dl=$("hSum");dl.replaceChildren();const row=(op,label,note,val,tot)=>{const dt=el("dt","",op),dd=el("dd",tot?"tot":"",label);if(note)dd.appendChild(el("span","note",note));dl.append(dt,dd,el("dd","v amt"+(tot?" tot":""),val))};
-  const oneNote=[o.oneoff?t("Leaves out {x} of one-off costs",{x:fmt(o.oneoff)}):"",o.pot?t("Leaves out {x} spent from your own pots",{x:fmt(o.pot)}):""].filter(Boolean).join(" · ")||null;
+  const oneNote=[o.oneoff?t("Leaves out {x} of one-off costs",{x:fmt(o.oneoff)}):"",o.pot?t("Leaves out {x} spent from your own pots",{x:fmt(o.pot)}):"",o.billOver.uncovered?t("Includes {x} paid over budget on {l}",{x:fmt(o.billOver.uncovered),l:o.billOver.cats.map(c=>c.c).join(", ")}):"",o.billOver.covered?t("{x} over budget on bills is covered from {n}",{x:fmt(o.billOver.covered),n:coverName(o.billOver.src)}):""].filter(Boolean).join(" · ")||null;
   const bc=[...billCatSet()].filter(c=>EXP_CATS.includes(c));const budNote=bc.length?t("Everyday categories only. Bills ({l}) and own pots are kept separate.",{l:bc.join(", ")}):null;
   if(o.mode==="current"){row("",t("Spending budget for the period"),budNote,fmt(o.B));row("−",t("Spent so far"),oneNote,fmt(o.S));
     if(o.upcoming.length)row("−",t("Bills still to come"),o.upcoming.map(b=>b.x.r.name+" ("+dDay(b.x.dIso)+")").join(", "),fmt(o.U));
@@ -569,6 +571,7 @@ function renderHealth(){
       check(!missing.length,t("Income"),inc.map(x=>x.r.name+": "+(x.hit?t("received {d}",{d:dDay(x.hit.date)}):x.label.toLowerCase())).join(" · "),"entries")}
     const pots=EXP_CATS.filter(c=>potSet().has(c)).map(c=>({c,i:potInfo(c,p)})).filter(x=>x.i&&(x.i.avail||x.i.spent));
     if(pots.length)check(!pots.some(x=>x.i.left<0),t("Own pots"),pots.map(x=>x.c+": "+t("{x} left",{x:fmt(x.i.left)})+(x.i.carry?" ("+t("incl. {x} carried over",{x:fmt(x.i.carry)})+")":"")).join(" · "),"overview");
+    {const bc=billCover(p);if(bc.src&&bc.total){const li=check(!bc.pending,t("Bills over budget"),bc.pending?t("{x} more over budget. Tap to choose whether {n} covers it.",{x:fmt(bc.pending),n:coverName(bc.src)}):t("{a} covered from {n}",{a:fmt(bc.covered),n:coverName(bc.src)})+(bc.uncovered?" · "+t("{x} from everyday spending",{x:fmt(bc.uncovered)}):""),"health");if(bc.pending)ul.lastChild.querySelector("button").onclick=e=>{e.stopImmediatePropagation();openCover(p)}}}
     fastCats(p).forEach(f=>check(false,t("{c} is running fast",{c:f.c}),t("{a} of {b} spent; about {e} would be on pace by now.",{a:fmt(f.spent),b:fmt(f.budget),e:fmt(f.expected)}),"entries"));
     const cc=childCfg();if(cc&&cc.balance!==false){const bal=kidBalanceTo(p.e);if(Math.abs(bal)>=1)check(null,cc.name,bal>0?t("{o} owes you {x}",{o:cc.other||t("The other parent"),x:fmt(bal)}):t("You owe {o} {x}",{o:cc.other||t("the other parent"),x:fmt(-bal)}),"kids")}
   }
@@ -811,7 +814,7 @@ function renderNet(){
   chartTip(box,svg,W,pl2,pr,ks.length,ix=>dShort(ks[ix])+" · "+fmt(snap[ks[ix]]));
 }
 function renderAU(){const tc=catList("income").filter(c=>c.k==="transfer").map(c=>c.n);const panel=$("auPanel");panel.hidden=!tc.length;if(!tc.length)return;
-  $("auTitle").textContent=tc.join(", ");const p=curP();$("auMonth").textContent=fmt(totalsP(p).fromIn);let y=0;for(let i=0;i<12;i++)y+=totalsP(shiftP(p,-i)).fromIn;$("auYear").textContent=fmt(y)}
+  $("auTitle").textContent=tc.join(", ");const p=curP();$("auMonth").textContent=fmt(totalsP(p).fromIn);let y=0;for(let i=0;i<12;i++)y+=totalsP(shiftP(p,-i)).fromIn;$("auYear").textContent=fmt(y);panel.classList.toggle("autohid",!y)}
 function renderAUChart(){if($("auPanel").hidden)return;const l=last6();barsChart($("auChart"),l.map(x=>totalsP(x.p).fromIn),l.map(x=>x.lab),0,t("Money transferred in per period"),"var(--c4)")}
 
 /* ---------- recurring items: salary, transfers to goals, bills ---------- */
@@ -941,6 +944,7 @@ function fillSettings(){
   // import
   const im=$("setImport");im.replaceChildren(...IMPORT_METHODS.map(([v,n])=>{const o=el("option","",n==="Another bank (CSV file)"||n==="Screenshots and typing only"?t(n):n);o.value=v;return o}));im.value=(st.importPref||{}).method||"csv";$("importHow").textContent=importHowTo(im.value);
   $("setOwn").value=(st.ownAccounts||[]).join("\n");$("mapsInfo").textContent=Object.keys(st.csvMaps||{}).length?t("{n} saved column matches.",{n:Object.keys(st.csvMaps).length}):t("No saved column matches.");
+  fillCover();fillDisplay();
   // child tracker
   const cc=(st.features||{}).child||{};$("kOn").checked=!!cc.on;$("kName").value=cc.name||"";$("kChild").value=cc.child||"";$("kOther").value=cc.other||"";
   const ks=$("kShare");ks.replaceChildren(...Array.from({length:21},(_,n)=>{const o=el("option","",t("{o} pays {p} %",{o:cc.other||t("The other parent"),p:n*5}));o.value=String(n*5);return o}));ks.value=String(cc.share!=null?cc.share:50);
@@ -976,7 +980,7 @@ function fillCatEditor(){
   const mk=(boxId,ty,amounts)=>{const box=$(boxId);box.replaceChildren();catList(ty).forEach(c=>box.appendChild(catRow(ty,c.n,amounts?amounts[c.n]:null,c.k,c.pot)))};
   const s=settings();mk("setCats","expense",s.budget);mk("setSave","saving",s.targets);mk("setInc","income",null);
   $("investSplit").checked=splitOn();$("invShort").value=s.invest.short||"";$("invLong").value=s.invest.long||"";$("splitFields").hidden=!splitOn();$("splitWrap").hidden=!investCats().length;
-  const eb=everydayBudget(s),tb=budgetTotal(s);$("catTotal").textContent=t("Total spending budget: {x}",{x:fmtCur(tb,baseCur())})+(eb!==tb?" · "+t("{x} of it for everyday spending",{x:fmtCur(eb,baseCur())}):"");$("saveSettings").disabled=true;
+  const eb=everydayBudget(s),tb=budgetTotal(s);setTimeout(updatePlan);$("catTotal").textContent=t("Total spending budget: {x}",{x:fmtCur(tb,baseCur())})+(eb!==tb?" · "+t("{x} of it for everyday spending",{x:fmtCur(eb,baseCur())}):"");$("saveSettings").disabled=true;
 }
 function catRow(ty,name,amount,kind,pot){
   const r=el("div","cat-row");r.dataset.old=name||"";r.dataset.kind=kind||"other";
@@ -988,7 +992,7 @@ function catRow(ty,name,amount,kind,pot){
   const x=el("button","x","×");x.type="button";x.setAttribute("aria-label",t("Remove category"));x.addEventListener("click",()=>{r.remove();markCats()});r.appendChild(x);
   r.querySelectorAll("input").forEach(i=>i.addEventListener("input",markCats));r._n=n;r._ty=ty;return r;
 }
-function markCats(){markDirty();$("saveSettings").disabled=false;$("setHint").textContent=t("Unsaved changes")}
+function markCats(){markDirty();updatePlan();$("saveSettings").disabled=false;$("setHint").textContent=t("Unsaved changes")}
 [["catAdd","setCats","expense"],["saveAdd","setSave","saving"],["incAdd","setInc","income"]].forEach(([b,box,ty])=>$(b).addEventListener("click",()=>{$(box).appendChild(catRow(ty,"",ty==="income"?null:"",guessKind("",ty)));markCats();$(box).lastChild._n.focus()}));
 $("investSplit").addEventListener("change",()=>{$("splitFields").hidden=!$("investSplit").checked;markCats()});
 ["invShort","invLong"].forEach(id=>$(id).addEventListener("input",markCats));
@@ -1923,8 +1927,95 @@ function openDebt(d0){
 }
 $("debtAdd").addEventListener("click",()=>openDebt(null));
 
+/* ---------- bills over budget: the excess comes out of everyday spending ---------- */
+// Bill categories stay out of the daily allowance, but anything paid beyond a bill category's monthly budget
+// (or, without a budget, beyond the recurring amounts due) counts as everyday spending from the day it happened.
+function billOver(p){
+  const s=settings(),bcs=billCatSet(),ps=potSet();const out={total:0,byIdx:{},cats:[]};const exp={};
+  billStatus(p).forEach(x=>{if(x.ty==="expense")exp[x.r.cat]=(exp[x.r.cat]||0)+recCzk(x.r)});
+  const byCat={};pItems(p).filter(i=>i.type==="expense"&&!i.oneoff).forEach(i=>partsOf(i).forEach(pt=>{if(bcs.has(pt.cat)&&!ps.has(pt.cat))(byCat[pt.cat]=byCat[pt.cat]||[]).push({date:i.date,v:+pt.czk||0})}));
+  Object.entries(byCat).forEach(([c,list])=>{const b=+s.budget[c]||exp[c]||0;let run=0,over=0;
+    list.sort((a,b2)=>a.date.localeCompare(b2.date)).forEach(x=>{const before=Math.max(0,run-b);run+=x.v;const add=Math.max(0,run-b)-before;if(add>0){over+=add;const d=dayIdx(p,x.date);out.byIdx[d]=(out.byIdx[d]||0)+add}});
+    if(over>0){out.total+=over;out.cats.push({c,spent:run,budget:b,over})}});
+  out.total=Math.round(out.total*100)/100;return out;
+}
+
+/* ---------- covering bills that come in over budget from a chosen account ---------- */
+// settings.billCover = {src:"" | "acct:<id>" | "cat:<savings category>", auto: Kč a month covered without asking}
+// settings.coverLog[periodStart] = {ok: extra Kč approved, seen: overspend Kč when last decided}
+function coverSrcs(){const acc=((docs.accounts||{}).list||[]).map(a=>["acct:"+a.id,t("Account: {n}",{n:a.name})]);
+  return [["",t("Nobody, take it from everyday spending")]].concat(acc,SAVE_CATS.map(c=>["cat:"+c,t("Savings: {n}",{n:c})]))}
+function coverName(src){const o=coverSrcs().find(x=>x[0]===src);return o?o[1].replace(/^[^:]+:\s*/,""):""}
+function billCover(p){
+  const bo=billOver(p),st=docs.settings||{},bc=st.billCover||{};const src=bc.src&&coverSrcs().some(x=>x[0]===bc.src)?bc.src:"";
+  const log=((st.coverLog||{})[p.s])||{ok:0,seen:0};
+  if(!src||!bo.total)return {...bo,src,covered:0,uncovered:bo.total,pending:0,auto:0};
+  const auto=Math.min(bo.total,+bc.auto||0),ok=Math.min(bo.total-auto,+log.ok||0),covered=auto+ok,rest=bo.total-covered;
+  const pending=rest>0.5&&bo.total>(+log.seen||0)+0.5?rest:0;
+  return {...bo,src,covered:Math.round(covered*100)/100,uncovered:Math.round(rest*100)/100,pending:Math.round(pending*100)/100,auto};
+}
+function openCover(p){
+  p=p||curP();const c=billCover(p);if(!c.src||!c.uncovered){toast(t("Nothing to confirm."));return}const name=coverName(c.src);const st=ensureSettings();
+  const lines=el("ul","cover-list");c.cats.forEach(x=>{const li=el("li");li.append(el("span","",x.c),el("b","amt",t("{x} over",{x:fmt(x.over)})),el("small","",t("{a} paid, budget {b}",{a:fmt(x.spent),b:fmt(x.budget)})));lines.appendChild(li)});
+  const yes=el("button","primary",t("Cover {x} from {n}",{x:fmt(c.uncovered),n:name}));yes.type="button";const no=el("button","icon-btn",t("Take it from everyday spending"));no.type="button";
+  const save=async ok=>{st.coverLog=st.coverLog||{};const l=st.coverLog[p.s]||{ok:0,seen:0};if(ok)l.ok=(+l.ok||0)+c.uncovered;l.seen=c.total;st.coverLog[p.s]=l;await persist();closeSheet();render();
+    toast(ok?t("{x} will come from {n}. Remember to move it in your bank.",{x:fmt(c.uncovered),n:name}):t("The extra comes out of everyday spending."))};
+  yes.addEventListener("click",()=>save(true));no.addEventListener("click",()=>save(false));
+  const row=el("div","btnrow wrap");row.append(yes,no);
+  openSheet(t("Bills over budget"),[el("p","small",t("These bills came in over their monthly budget this period:")),lines,
+    el("p","small",c.auto?t("{a} was covered from {n} automatically (your limit is {l} a month). The remaining {x} needs your OK.",{a:fmt(c.auto),n:name,l:fmt(+st.billCover.auto||0),x:fmt(c.uncovered)})
+      :t("Your automatic limit is used up, so the remaining {x} needs your OK.",{x:fmt(c.uncovered)})),row,
+    el("p","fine",t("The app doesn't move money. If you cover it from {n}, make the transfer in your bank.",{n:name}))]);
+}
+function fillCover(){const st=docs.settings||{},bc=st.billCover||{};const s=$("coverSrc");if(!s)return;s.replaceChildren(...coverSrcs().map(([v,tx])=>{const o=el("option","",tx);o.value=v;return o}));
+  s.value=coverSrcs().some(x=>x[0]===bc.src)?bc.src||"":"";$("coverAuto").value=bc.auto?String(bc.auto):"";$("coverAutoWrap").hidden=!s.value;$("coverCur").textContent=baseCur();
+  const c=billCover(curP());$("coverInfo").textContent=!s.value?t("Anything paid over a bill's budget comes out of your everyday spending."):
+    c.total?t("This period: {a} over budget, {b} covered from {n}.",{a:fmt(c.total),b:fmt(c.covered),n:coverName(s.value)}):t("No bills are over budget this period.")}
+$("coverSrc").addEventListener("change",async()=>{const st=ensureSettings();st.billCover={...(st.billCover||{}),src:$("coverSrc").value};await persist();render()});
+$("coverAuto").addEventListener("change",async()=>{const st=ensureSettings();st.billCover={...(st.billCover||{}),auto:Math.max(0,parseNum($("coverAuto").value)||0)};await persist();render()});
+
+/* ---------- plan: does every koruna of regular income have a job? ---------- */
+const MONTHLY={monthly:1,fortnightly:26/12,weekly:52/12};
+function regularIncome(){return recList().filter(r=>typeOfCat(r.cat)==="income").reduce((a,r)=>a+recCzk(r)*(MONTHLY[r.freq||"monthly"]||1),0)}
+function updatePlan(){
+  const box=$("planBox");if(!box)return;box.replaceChildren();
+  const val=id=>[...$(id).children].reduce((a,r)=>a+(r._a&&!r._a.disabled?parseNum(r._a.value)||0:0),0);
+  const spend=val("setCats");let save=val("setSave");if($("investSplit").checked&&[...$("setSave").children].some(r=>r._a&&r._a.disabled))save+=(parseNum($("invShort").value)||0)+(parseNum($("invLong").value)||0);
+  const inc=regularIncome(),left=Math.round(inc-spend-save);
+  box.appendChild(el("h3","",t("Plan")));
+  const row=(a,b,cls)=>{const r=el("div","kv"+(cls?" "+cls:""));r.append(el("span","",a),el("b","amt",b));box.appendChild(r)};
+  if(!inc){box.appendChild(el("p","small muted",t("Add your salary as a recurring income item (Settings → Pay, bills & reminders) to check your plan against it.")));return}
+  row(t("Regular income"),fmt(inc));row("− "+t("Spending budgets"),fmt(spend));row("− "+t("Saving & investing"),fmt(save));
+  const msg=Math.abs(left)<1?t("Every koruna has a job"):left>0?t("{x} not yet assigned",{x:fmt(left)}):t("{x} over-planned",{x:fmt(-left)});
+  row("= "+msg,Math.abs(left)<1?"✓":fmt(Math.abs(left)),"total "+(Math.abs(left)<1?"ok":left>0?"spare":"over"));
+  box.appendChild(el("p","fine",left<-0.5?t("Your budgets and savings add up to more than your regular income. Lower a budget or a target, or the gap comes from savings or irregular income."):left>0.5?t("Give the rest a job: raise a savings target, add it to a pot, or leave it as a buffer."):t("Your regular income is fully planned.")));
+}
+
+/* ---------- display switches ---------- */
+const DISPLAY=[["Health",[["face","Health face and dial"],["streak","Streak"],["howcalc","How it's worked out"]]],
+  ["Overview",[["flow","Where the money went"],["pace","Spending pace"],["schedule","Schedule"],["bars","Budget vs actual"],["donut","Where it went"],["heat","Day by day"],["places","Top places"],["trend","Last six months"]]],
+  ["Savings",[["jars","Pots & goals"],["net","Savings over time"],["transfers","Money transferred in"]]],
+  ["Child expenses",[["kidchart","Last six months"]]],
+  ["Motion",[["anim","Animations"],["cele","Celebrations"]]]];
+const showOn=k=>(((docs.settings||{}).display)||{})[k]!==false;
+function applyDisplay(){
+  document.querySelectorAll("[data-show]").forEach(p=>p.classList.toggle("dispoff",!showOn(p.dataset.show)));
+  document.body.classList.toggle("noanim",!showOn("anim"));
+}
+function autoHide(){
+  document.querySelectorAll("[data-auto]").forEach(p=>{let empty;
+    if(p.dataset.auto==="spend")empty=!pItems(curP()).some(i=>i.type==="expense");
+    else{const c=[...p.querySelectorAll(".chart,.bars,.bills,.merchants,.donut-legend,ol,ul")];empty=c.length>0&&c.every(x=>!x.children.length||x.querySelector(":scope > .empty"))}
+    p.classList.toggle("autohid",!!empty)});
+}
+function fillDisplay(){
+  const box=$("dispList");if(!box)return;box.replaceChildren();
+  DISPLAY.forEach(([grp,list])=>{if(grp==="Child expenses"&&!childCfg())return;box.appendChild(el("h3","",t(grp)));
+    list.forEach(([k,label])=>{const l=chk(t(label),showOn(k));l.input.addEventListener("change",async()=>{const st=ensureSettings();st.display=st.display||{};if(l.input.checked)delete st.display[k];else st.display[k]=false;applyDisplay();await persist()});box.appendChild(l)})});
+}
+
 /* ---------- visual extras: money flow, jars, celebrations, streak ---------- */
-const reduceMotion=()=>matchMedia("(prefers-reduced-motion: reduce)").matches;
+const reduceMotion=()=>matchMedia("(prefers-reduced-motion: reduce)").matches||document.body.classList.contains("noanim");
 
 /* money flow: where this period's money came from and where it went */
 let flowSig="";
@@ -2008,7 +2099,7 @@ async function checkCelebrations(){
     goalList().forEach(g=>{if(!(+g.target>0))return;const m=Math.min(100,Math.floor(goalProgress(g)/g.target*4)*25);const was=st.cele.goals[g.id];
       if(was==null||m!==was){st.cele.goals[g.id]=m;changed=true;if(was!=null&&m>was)msgs.push(m>=100?t("{g} reached. Well done!",{g:g.name}):t("{g} is {m} % of the way there.",{g:g.name,m}))}});
     if(changed)await persist();
-    if(msgs.length){confetti();toast(msgs.join(" "));const f=$("hDial");if(f){f.classList.add("beam");setTimeout(()=>f.classList.remove("beam"),2600)}}
+    if(msgs.length&&showOn("cele")){confetti();toast(msgs.join(" "));const f=$("hDial");if(f){f.classList.add("beam");setTimeout(()=>f.classList.remove("beam"),2600)}}
   }finally{celeBusy=false}
 }
 
