@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="app.css?v=11.1">
+<link rel="stylesheet" href="app.css?v=13">
 <title>Kč Ledger</title>
 </head>
 <body>
@@ -38,7 +38,7 @@
       <button class="primary" id="lockBtn" type="submit">Unlock</button>
       <p class="hint" id="lockHint"></p>
     </form>
-    <p class="fine" id="lockVer">Kč Ledger · version 11</p>
+    <p class="fine" id="lockVer">Kč Ledger · version 13</p>
     <p class="fine" id="lockFine" hidden>Your entries are encrypted on this device. Nobody, including the app's host, can read them. There is no passcode reset: if you forget it, only a backup can bring your data back.</p>
   </div>
 </main>
@@ -163,7 +163,7 @@
   <section class="tab" id="tab-entries" hidden>
     <div class="quick">
       <button class="quick-btn" id="shotBtn"><span class="qi" aria-hidden="true">▣</span><span><b>Read a screenshot</b><small>Banking app or a receipt</small></span></button>
-      <button class="quick-btn" id="importBtn2"><span class="qi" aria-hidden="true">≡</span><span><b>Import a bank file</b><small>CSV from your bank, Revolut or Wise</small></span></button>
+      <button class="quick-btn" id="importBtn2"><span class="qi" aria-hidden="true">≡</span><span><b>Import a bank file</b><small>Bank CSV, Revolut, Wise or your Apple Pay file</small></span></button>
     </div>
     <input type="file" id="shotFile" accept="image/*" hidden>
     <input type="file" id="attachFile" accept="image/*" hidden>
@@ -403,6 +403,51 @@
       <p class="hint" id="icsHint"></p>
     </details>
 
+    <details class="panel set-sec" id="secApplePay">
+      <summary><h2>Apple Pay purchases</h2></summary>
+      <div class="fields">
+        <p class="small muted">Log every in-store Apple Pay purchase with an automation in the Shortcuts app on your iPhone. When your bank export arrives, the bank's entry replaces the Apple Pay one and keeps your category, so nothing is counted twice. There are two ways to do it.</p>
+
+        <h3>1. Private: a file in iCloud Drive</h3>
+        <p class="small">Each purchase is added to a text file in your iCloud Drive, so nothing leaves your Apple account. Import the file whenever you like; purchases already here are skipped.</p>
+        <ol class="small pay-steps">
+          <li>In Shortcuts, open Automation, tap +, and choose Wallet (called Transaction on older iPhones).</li>
+          <li>Pick your cards and all categories, choose Run Immediately, turn off Notify When Run and tap Next.</li>
+          <li>Choose New Blank Automation (or Create New Shortcut) and add the action Append to Text File.</li>
+          <li>In its text, type KCPAY | then insert Shortcut Input and pick Merchant. Type | and insert Shortcut Input again, picking Amount. Type | and insert Current Date.</li>
+          <li>Tap Current Date and set Date Format to ISO 8601 with the time included.</li>
+          <li>Set the file path below, turn on Make New Line and tap Done.</li>
+        </ol>
+        <div id="payFileRecipe" class="recipe"></div>
+        <button class="primary" id="payImportBtn" type="button">Import the Apple Pay file</button>
+        <p class="fine">The file is in iCloud Drive → Shortcuts. Importing it from Entries → Import a bank file works too.</p>
+
+        <h3>2. Automatic: a private inbox on GitHub</h3>
+        <p class="small">Kč Ledger collects each purchase by itself whenever you open it, stores it encrypted and deletes it from GitHub. Until then, the shop name and amount sit unencrypted in your private repository.</p>
+        <div id="paySetup" class="fields">
+          <div class="field"><label class="label" for="payRepo">Private repository</label><input id="payRepo" placeholder="your-username/ledger-data" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+          <div class="field"><label class="label" for="payToken">Access token for the inbox</label><input id="payToken" type="password" placeholder="github_pat_…" autocomplete="off" autocapitalize="off" spellcheck="false">
+            <span class="fine">Make a separate fine-grained token for this repository with only Issues: Read and write. It also goes into the Shortcut, so don't reuse your sync token.</span></div>
+          <button class="primary" id="paySetupBtn" type="button">Set up the inbox</button>
+          <p class="hint" id="payHint" role="status"></p>
+        </div>
+        <div id="payOn" hidden>
+          <ol class="small pay-steps">
+            <li>In Shortcuts, open Automation, tap +, and choose Wallet (called Transaction on older iPhones).</li>
+            <li>Pick your cards and all categories, choose Run Immediately, turn off Notify When Run and tap Next.</li>
+            <li>Choose New Blank Automation (or Create New Shortcut), add the action Get Contents of URL and paste the URL below.</li>
+            <li>Open the action's details: set Method to POST, add the header below, set Request Body to JSON and add a Text field with the key body.</li>
+            <li>In that field, type KCPAY | then insert Shortcut Input and pick Merchant, type | then insert Shortcut Input again and pick Amount. Tap Done.</li>
+          </ol>
+          <div id="payRecipe" class="recipe"></div>
+          <p class="fine">Purchases made without an internet connection can't reach the inbox. Your bank export still brings them in, or add Append to Text File to the same automation as a backup.</p>
+          <p class="small" id="payStatus"></p>
+          <div class="btnrow wrap"><button class="primary" id="payCheckBtn" type="button">Check now</button><button class="icon-btn" id="payOffBtn" type="button">Turn off on this device</button></div>
+        </div>
+        <p class="fine">Only in-store Apple Pay taps start the automation, not online payments. If nothing arrives, check that Wallet may use mobile data (iPhone Settings → Apps → Wallet).</p>
+      </div>
+    </details>
+
     <details class="panel set-sec" id="secImport">
       <summary><h2>Importing</h2></summary>
       <div class="fields">
@@ -490,7 +535,7 @@
         <button class="danger" id="eraseBtn" type="button">Erase all data</button>
       </details>
     </details>
-    <p class="fine hfine">Kč Ledger · version 11</p>
+    <p class="fine hfine">Kč Ledger · version 13</p>
   </section>
 
   <nav class="tabbar" aria-label="Sections">
@@ -517,9 +562,9 @@
   <div class="viewer-bar"><button class="icon-btn" id="viewNext">Next image</button><span class="spacer"></span><button class="danger" id="viewDel">Remove image</button></div>
 </div>
 <div id="toast" class="toast" role="status" hidden></div>
-<script src="i18n.js?v=11.1"></script>
-<script src="import.js?v=11.1"></script>
-<script src="report.js?v=11.1"></script>
-<script src="app.js?v=11.1"></script>
+<script src="i18n.js?v=13"></script>
+<script src="import.js?v=13"></script>
+<script src="report.js?v=13"></script>
+<script src="app.js?v=13"></script>
 </body>
 </html>

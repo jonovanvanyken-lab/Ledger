@@ -70,3 +70,14 @@ Text recognition: tesseract.js (Apache 2.0). PDF statements: jsPDF (MIT) with a 
 - **Plan** (Settings → Categories & budgets) checks your regular income against your spending budgets and savings targets.
 - **Display** (Settings) switches each chart and graphic on or off, plus animations and celebrations. Empty sections hide themselves.
 - New: one-off check after imports, spending alerts, Year in review, Owed & owing, money-flow chart, pot and goal jars, celebrations and the under-budget streak.
+
+## Version 13
+
+- **Apple Pay purchases** (Settings → Apple Pay purchases): an iPhone Shortcuts automation records each in-store Apple Pay tap.
+  - *Private:* the Shortcut adds a line to a text file in iCloud Drive → Shortcuts. Tap **Import** → **Import Apple Pay file** to bring them in. Purchases already in the ledger are skipped.
+  - *Automatic:* the Shortcut posts to a private inbox in your Ledger-Data repo; the app collects and deletes them when you open it. Use a separate token with only Issues: Read and write.
+  - When the bank export arrives it replaces the Apple Pay entry and keeps the category you chose.
+
+## Version 12
+
+- **3D Health face:** a lit 3D face you can turn with your finger or by tilting your phone. It only draws while it moves and while Health is on screen. Switch it off in Settings → Display.

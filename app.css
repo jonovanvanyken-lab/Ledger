@@ -579,3 +579,13 @@ body.noanim *,body.noanim *::before{animation:none!important;transition:none!imp
 .disp-list{display:flex;flex-direction:column;gap:4px}.disp-list h3{margin:12px 0 2px}
 .plan{margin-top:14px;border-top:1px solid var(--line);padding-top:4px}.plan h3{margin:10px 0 6px}
 .plan .kv.total.ok b{color:var(--ok)}.plan .kv.total.spare b{color:var(--accent)}.plan .kv.total.over b{color:var(--bad)}
+
+.health-dial{position:relative;touch-action:pan-y}
+.health-dial .face3d{position:absolute;left:16.36%;top:16.36%;width:67.27%;height:67.27%;cursor:grab;filter:drop-shadow(0 6px 10px rgba(0,0,0,.18))}
+.health-dial.f3d svg .face,.health-dial.f3d svg .feat{visibility:hidden}
+
+.recipe{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;background:var(--bg);margin:8px 0}
+.rcp{display:grid;grid-template-columns:7.5em 1fr auto;gap:8px;align-items:center;padding:8px 10px;border-top:1px solid var(--line)}
+.rcp:first-child{border-top:0}.rcp .rl{font-size:12px;color:var(--muted)}
+.rcp code{font-family:var(--f-mono);font-size:12px;word-break:break-all;user-select:all;-webkit-user-select:all}
+.pay-steps{margin:0 0 6px;padding-left:20px;display:flex;flex-direction:column;gap:6px}

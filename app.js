@@ -3,7 +3,7 @@
    A random data key encrypts the ledger and images. That key is stored wrapped by your passcode
    (PBKDF2-SHA256, 600k rounds → AES-GCM) and, if you turn it on, by a Face ID passkey (WebAuthn PRF → HKDF → AES-GCM). */
 "use strict";
-const ITER=600000,DAY=864e5,APP_VERSION=11;
+const ITER=600000,DAY=864e5,APP_VERSION=13;
 const $=id=>document.getElementById(id);
 const te=new TextEncoder(),td=new TextDecoder();
 const b64=buf=>{let s="";const b=buf instanceof Uint8Array?buf:new Uint8Array(buf);for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)};
@@ -145,11 +145,11 @@ async function showApp(){
   $("wizard").hidden=true;$("app").hidden=false;cur=periodOfDate(new Date());$("fDate").value=defaultDate();
   if(docs.settings.hideOnOpen)setPrivate(true);
   if(await runAuto())await persist();
-  showTab("health");render();armIdle();updateRates(false);syncSoon(800);
+  showTab("health");render();armIdle();updateRates(false);syncSoon(800);setTimeout(()=>payCheck(false),1200);
 }
 function lock(){
   clearTimeout(syncT);pendingJoin=null;key=null;rawKey=null;keys=null;docs={};closeViewer();closeReview();closeSheet();
-  ["ledger","bars","accts","trend","pace","bills","donut","donutLegend","heat","dayList","merchants","goals","invSplit","invChart","netChart","auChart","banners","recap","hDial","hSum","hChecks","hCompare","setCats","setSave","recList","wzBody","kidList","kidSugg","kidBalance","kidMonth","kidChart","setInc","rateRows","debtList","flow","jars","streakDots"].forEach(id=>{const e=$(id);if(e)e.replaceChildren()});
+  ["ledger","bars","accts","trend","pace","bills","donut","donutLegend","heat","dayList","merchants","goals","invSplit","invChart","netChart","auChart","banners","recap","hDial","hSum","hChecks","hCompare","setCats","setSave","recList","wzBody","kidList","kidSugg","kidBalance","kidMonth","kidChart","setInc","rateRows","debtList","flow","jars","streakDots","payRecipe"].forEach(id=>{const e=$(id);if(e)e.replaceChildren()});
   document.querySelectorAll("#app input,#wizard input").forEach(i=>{if(i.type!=="file"&&i.type!=="checkbox"&&i.type!=="radio")i.value=""});
   $("app").hidden=true;$("wizard").hidden=true;$("lock").hidden=false;$("lockSub").textContent=t("Checking this device…");setPrivate(false);boot();
 }
@@ -514,19 +514,20 @@ function drawDial(fracUsed,fracExpected,curve,neutral){
     mk("circle",{cx:C,cy:C,r:R,fill:"none","stroke-width":SW,class:"ring","stroke-linecap":"round",transform:"rotate(-90 "+C+" "+C+")","stroke-dasharray":circ,"stroke-dashoffset":circ});
     mk("line",{class:"tick","stroke-width":4,"stroke-linecap":"round"});mk("circle",{cx:C,cy:C,r:74,class:"face"});
     mk("ellipse",{cx:86,cy:94,rx:8,ry:10,class:"feat eye"});mk("ellipse",{cx:134,cy:94,rx:8,ry:10,class:"feat eye"});
-    mk("path",{class:"feat mouth",fill:"none","stroke-width":9,"stroke-linecap":"round"});box.replaceChildren(svg)}
+    mk("path",{class:"feat mouth",fill:"none","stroke-width":9,"stroke-linecap":"round"});box.replaceChildren(svg);F3.on=false;F3.cv=null}
+  face3dMount(box);
   const ring=svg.querySelector(".ring"),tick=svg.querySelector(".tick");
   ring.setAttribute("stroke-dashoffset",String(circ*(1-clamp(fracUsed,0,1))));ring.style.opacity=fracUsed>0?1:0;
   if(fracExpected==null)tick.style.display="none";else{tick.style.display="";const a=-Math.PI/2+2*Math.PI*clamp(fracExpected,0,1);const r1=R-SW/2-5,r2=R+SW/2+5;
     tick.setAttribute("x1",C+r1*Math.cos(a));tick.setAttribute("y1",C+r1*Math.sin(a));tick.setAttribute("x2",C+r2*Math.cos(a));tick.setAttribute("y2",C+r2*Math.sin(a))}
-  const mouth=svg.querySelector(".mouth");const setMouth=c=>{const y0=140-c*4,dy=c*26;mouth.setAttribute("d","M80 "+y0+" Q110 "+(y0+dy)+" 140 "+y0)};
+  const mouth=svg.querySelector(".mouth");const setMouth=c=>{const y0=140-c*4,dy=c*26;mouth.setAttribute("d","M80 "+y0+" Q110 "+(y0+dy)+" 140 "+y0);face3dCurve(c)};
   svg.setAttribute("aria-label",neutral?t("No health reading for this period"):t("Budget used {a} %",{a:Math.round(fracUsed*100)})+(fracExpected!=null?", "+t("expected {e} % by today",{e:Math.round(fracExpected*100)}):""));
   cancelAnimationFrame(hAnim);const from=hCurve,reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
   if(reduce||Math.abs(from-curve)<.01){setMouth(curve);hCurve=curve;return}
   const t0=performance.now(),dur=650;const step=tm=>{const q=Math.min(1,(tm-t0)/dur),e=1-Math.pow(1-q,3);hCurve=from+(curve-from)*e;setMouth(hCurve);if(q<1)hAnim=requestAnimationFrame(step)};hAnim=requestAnimationFrame(step);
 }
 function renderHealth(){
-  if(!key)return;const p=curP();const o=healthCalc(p);const tab=$("tab-health");const mix=healthMix(o.r);
+  if(!key)return;const p=curP();const o=healthCalc(p);const tab=$("tab-health");const mix=healthMix(o.r);face3dColor(mix);
   const hc=mix==null?"var(--muted)":"color-mix(in oklch, var(--h-good) "+mix+"%, var(--h-off))";tab.style.setProperty("--hc",hc);$("hHero").style.setProperty("--hc",hc);
   const nm=(docs.settings||{}).name;$("hHello").textContent=nm?t("Hi {n}",{n:nm}):"";$("hHello").hidden=!nm;
   const used=o.B?o.S/o.B:0;const curve=o.mode==="current"&&o.left<0?-1:healthCurve(o.r);
@@ -593,7 +594,7 @@ function entryRow(k,i,showMonth){
   if(cc&&i.child)bd.appendChild(el("span","badge kid",(cc.child||t("Child"))+" · "+(100-(+i.child.share||0))+"/"+(+i.child.share||0)));
   if(cc&&i.childRepay)bd.appendChild(el("span","badge kid",t("repayment")));
   if(i.oneoff)bd.appendChild(el("span","badge one",t("one-off")));if((i.att||[]).length)bd.appendChild(el("span","badge",i.att.length>1?i.att.length+" "+pl(i.att.length,"image"):t("image")));
-  if(i.src==="shot")bd.appendChild(el("span","badge",t("screenshot")));if(i.src==="auto")bd.appendChild(el("span","badge auto",t("added automatically")));if(i.conflict)bd.appendChild(el("span","badge one",t("edited on two devices")));
+  if(i.src==="shot")bd.appendChild(el("span","badge",t("screenshot")));if(i.src==="pay")bd.appendChild(el("span","badge",t("Apple Pay")));if(i.src==="auto")bd.appendChild(el("span","badge auto",t("added automatically")));if(i.conflict)bd.appendChild(el("span","badge one",t("edited on two devices")));
   if(bd.childNodes.length)w.appendChild(bd);
   const a=el("div","a amt",(i.type==="income"&&i.czk>0?"+":"")+fmt(i.czk));if(i.orig||(i.cur&&i.cur!==baseCur()))a.appendChild(el("small","",i.orig||fmtCur(i.amount,i.cur)));
   li.append(d,w,a);li.tabIndex=0;li.setAttribute("role","button");li.setAttribute("aria-label",t("Edit {n}, {x}",{n:i.note||i.cat,x:fmt(i.czk)}));
@@ -667,13 +668,13 @@ function openEditor(k,id){
     if(!n2.oneoff)delete n2.oneoff;if(c!==i.cur||a!==i.amount){if(c===baseCur())delete n2.orig;else n2.orig=a+" "+c}
     if(cc){if(ty==="expense"&&kidOn.checked){n2.child={share:+kidShare.value};delete n2.childNo}else{if(i.child)n2.childNo=true;delete n2.child}
       if(ty==="income"&&repWrap.input.checked)n2.childRepay=true;else delete n2.childRepay}
-    if(n2.cat!==i.cat&&(i.src==="rb"||i.src==="shot"||i.src==="csv")&&i.key&&!n2.parts){const st=ensureSettings();st.rules=st.rules||{};st.rules[i.key]=n2.cat}
+    if(n2.cat!==i.cat&&(i.src==="rb"||i.src==="shot"||i.src==="csv"||i.src==="pay")&&i.key&&!n2.parts){const st=ensureSettings();st.rules=st.rules||{};st.rules[i.key]=n2.cat}
     if(cc&&kidOn&&!!i.child!==kidOn.checked)kidLearn();
     const nk="m-"+dt.slice(0,7);docs[k].items=items(k).filter(x=>x.id!==i.id);(docs[nk]=docs[nk]||{items:[]}).items=items(nk).concat(n2);
     await persist();closeSheet();toast(t("Saved."));render()});
   del.addEventListener("click",async()=>{if(!del.classList.contains("confirm")){del.classList.add("confirm");del.textContent=t("Tap again to delete");return}
     docs[k].items=items(k).filter(x=>x.id!==i.id);if(i.src==="auto")(docs.autoSkip=docs.autoSkip||{})[i.id]=1;await persist();await dropUnused(i.att);closeSheet();toast(t("Entry deleted"));render()});
-  const meta=el("p","fine",(i.src==="rb"?t("From your Raiffeisen export"):i.src==="csv"?t("From a bank export"):i.src==="shot"?t("From a screenshot"):i.src==="auto"?t("Added automatically from a recurring item"):t("Added by hand"))+(i.orig?" · "+t("original amount {x}",{x:i.orig}):""));
+  const meta=el("p","fine",(i.src==="rb"?t("From your Raiffeisen export"):i.src==="csv"?t("From a bank export"):i.src==="shot"?t("From a screenshot"):i.src==="pay"?t("From Apple Pay, until the bank export arrives"):i.src==="auto"?t("Added automatically from a recurring item"):t("Added by hand"))+(i.orig?" · "+t("original amount {x}",{x:i.orig}):""));
   openSheet(t("Edit entry"),[seg,r1,fld(t("Category"),cat),r2,fld(t("Time"),tm),oneWrap,kidWrap,repWrap,partsWrap,imgs,meta,row,hint].filter(Boolean));
 }
 
@@ -944,7 +945,7 @@ function fillSettings(){
   // import
   const im=$("setImport");im.replaceChildren(...IMPORT_METHODS.map(([v,n])=>{const o=el("option","",n==="Another bank (CSV file)"||n==="Screenshots and typing only"?t(n):n);o.value=v;return o}));im.value=(st.importPref||{}).method||"csv";$("importHow").textContent=importHowTo(im.value);
   $("setOwn").value=(st.ownAccounts||[]).join("\n");$("mapsInfo").textContent=Object.keys(st.csvMaps||{}).length?t("{n} saved column matches.",{n:Object.keys(st.csvMaps).length}):t("No saved column matches.");
-  fillCover();fillDisplay();
+  fillCover();fillDisplay();renderPay();renderPayFile();
   // child tracker
   const cc=(st.features||{}).child||{};$("kOn").checked=!!cc.on;$("kName").value=cc.name||"";$("kChild").value=cc.child||"";$("kOther").value=cc.other||"";
   const ks=$("kShare");ks.replaceChildren(...Array.from({length:21},(_,n)=>{const o=el("option","",t("{o} pays {p} %",{o:cc.other||t("The other parent"),p:n*5}));o.value=String(n*5);return o}));ks.value=String(cc.share!=null?cc.share:50);
@@ -1103,7 +1104,7 @@ function askMapping(pc,fileName){return new Promise(resolve=>{
 })}
 async function handleImport(files){
   const st=ensureSettings();const own=new Set(st.ownAccounts||[]);const have=allIds();
-  let added=0,dupes=0,transfers=0,bad=0,merged=0,noRate=0,starter=false,setupApplied=false;const csvs=[];
+  let added=0,dupes=0,transfers=0,bad=0,merged=0,noRate=0,starter=false,setupApplied=false;const csvs=[];const payFile=[];
   for(const f of files){const tx=await readText(f);
     if(/^\s*\{/.test(tx)){try{const o=JSON.parse(tx);
       if(o.kind==="kc-starter"&&o.docs){starter=true;const sd=o.docs;
@@ -1118,6 +1119,7 @@ async function handleImport(files){
         if(sd.goals&&Array.isArray(sd.goals.list)){docs.goals=docs.goals||{list:[]};sd.goals.list.forEach(g=>{const ex=docs.goals.list.find(x=>x.name===g.name);if(!ex)docs.goals.list.push({...g,id:uid("g")});else if(ex.seeded){Object.assign(ex,{...g,id:ex.id});delete ex.seeded}else if(!ex.target&&g.target)ex.target=g.target});setupApplied=true}
         if(Array.isArray(sd.oneoff)){const ids=new Set(sd.oneoff);monthKeys().forEach(k=>{docs[k].items=items(k).map(i=>ids.has(i.id)?{...i,oneoff:true}:i)});setupApplied=true}
       }else if(o.kind==="kc-vault"){toast(t("That's a backup. Use Restore a backup instead."));return}else bad++}catch(_){bad++}}
+    else if(/^\s*KCPAY/im.test(tx))payFile.push(...payFromText(tx,f.lastModified));
     else csvs.push({name:f.name,text:tx})}
   // work out each file's format and columns
   const jobs=[];
@@ -1130,9 +1132,10 @@ async function handleImport(files){
   jobs.forEach(j=>{if(j.rb){const r=rbParseCSV(j.text);const ix=r[0]?r[0].indexOf("Account number"):-1;if(ix>=0)r.slice(1).forEach(x=>x[ix]&&own.add(x[ix]))}else KCImport.ownAccountsIn(j.pc,j.map).forEach(a=>own.add(a))});
   const s=settings();const emergency=catList("saving").find(c=>c.k==="emergency");
   const opts={ownAccounts:[...own],emergencyTarget:emergency?s.targets[emergency.n]:0,rules:st.rules||{},salaryWords:st.salaryWords||[],base:baseCur()};
-  const incoming=[];const addedIds=[];
+  const incoming=[...payFile];const addedIds=[];
   jobs.forEach(j=>{const res=j.rb?rbToItems(j.text,opts):KCImport.convert(j.pc,j.map,{...opts,format:j.pc.format});if(res.error){bad++;return}transfers+=res.skipped||0;incoming.push(...res.items)});
   incoming.forEach(i=>{if(have.has(i.id)){dupes++;return}
+    if(i.src==="pay"&&payBankTwin(i)){dupes++;return}
     if(i.cat&&!catsOf(i.type).includes(i.cat)){const ty=typeOfCat(i.cat);if(catsOf(ty).includes(i.cat))i.type=ty;else delete i.cat}
     if(!i.cat)i.cat=catOfKind(i.kind||"other",i.type);delete i.kind;
     const c=i.cur||baseCur();
@@ -1143,11 +1146,11 @@ async function handleImport(files){
     const tw=at?null:findShotTwin(i);if(tw){i.cat=tw.it.cat;if(tw.it.parts)i.parts=tw.it.parts;if(tw.it.oneoff)i.oneoff=true;if(tw.it.att)i.att=tw.it.att;if(tw.it.child)i.child=tw.it.child;docs[tw.k].items=items(tw.k).filter(x=>x.id!==tw.it.id);merged++}
     const k="m-"+i.date.slice(0,7);(docs[k]=docs[k]||{items:[]}).items=items(k).concat(i);added++;addedIds.push(i.id)});
   st.ownAccounts=[...own];
-  if(!added&&!dupes&&!setupApplied&&bad){toast(t("Those files couldn't be read as bank exports."));return}
+  if(!added&&!dupes&&!setupApplied&&bad&&!payFile.length){toast(t("Those files couldn't be read as bank exports."));return}
   if(starter)await migrate();if(setupApplied)await runAuto();
   await persist();applyCats();render();
   if(setupApplied&&!added&&!dupes&&!csvs.length){toast(t("Your setup was applied. Delete the setup file from your device."));return}
-  toast((starter?t("Starter loaded.")+" ":"")+t("Added {n} {e}",{n:added,e:pl(added,"entry")})+(dupes?", "+t("{n} already here",{n:dupes}):"")+(transfers?", "+t("{n} left out (transfers between your accounts or unfinished payments)",{n:transfers}):"")+(merged?", "+t("{n} matched to automatic or screenshot entries",{n:merged}):"")+(noRate?". "+t("{n} skipped: set their currency's exchange rate first",{n:noRate}):"")+".");
+  toast((starter?t("Starter loaded.")+" ":"")+t("Added {n} {e}",{n:added,e:pl(added,"entry")})+(dupes?", "+t("{n} already here",{n:dupes}):"")+(transfers?", "+t("{n} left out (transfers between your accounts or unfinished payments)",{n:transfers}):"")+(merged?", "+t("{n} matched to automatic, screenshot or Apple Pay entries",{n:merged}):"")+(noRate?". "+t("{n} skipped: set their currency's exchange rate first",{n:noRate}):"")+".");
   if(addedIds.length)setTimeout(()=>askOneoffs(addedIds),400);
 }
 
@@ -1289,7 +1292,9 @@ $("shotSave").addEventListener("click",async()=>{if(!key)return;
     await persist();closeReview();toast(t("Saved {n} {e}",{n:rows.length,e:pl(rows.length,"entry")})+(attId?" "+t("with the screenshot"):""));render();
   }catch(_){toast(t("Couldn't save. Try again."))}finally{$("shotSave").disabled=false}
 });
-function findShotTwin(i){for(const {k,i:x} of allItems())if(x.src==="shot"&&x.type===i.type&&Math.abs((Number(x.czk)||0)-i.czk)<0.01&&Math.abs(dOf(x.date)-dOf(i.date))<=3*DAY)return {k,it:x};return null}
+function findShotTwin(i){let best=null,bs=1e9;for(const {k,i:x} of allItems()){if(x.type!==i.type||x.id===i.id)continue;
+  if(x.src==="shot"){if(Math.abs((Number(x.czk)||0)-i.czk)<0.01&&Math.abs(dOf(x.date)-dOf(i.date))<=3*DAY)return {k,it:x};continue}
+  if(x.src!=="pay")continue;const sc=payTwinScore(x,i);if(sc!=null&&sc<bs){bs=sc;best={k,it:x}}}return best}
 
 /* ---------- end-to-end encrypted sync through a private GitHub repository ----------
    The ledger is encrypted with the data key before upload; the access token lives only inside this
@@ -1819,6 +1824,115 @@ function openKidStatement(){
 }
 async function copyText(tx){try{await navigator.clipboard.writeText(tx);toast(t("Copied. Paste it into a message or email."))}catch(_){toast(t("Couldn't copy. Select the text in the preview instead."))}}
 
+/* ---------- Apple Pay purchases ----------
+   An iPhone Shortcuts automation (Wallet / Transaction trigger) runs on every in-store Apple Pay tap.
+   Private route: it appends "KCPAY | merchant | amount | date" to a text file in iCloud Drive, imported with one tap.
+   Automatic route: it posts "KCPAY | merchant | amount" as a comment on a private issue in your GitHub repository;
+   Kč Ledger reads those comments when it opens, adds them to the encrypted ledger and deletes them from GitHub.
+   When the bank export arrives, the bank's entry replaces the Apple Pay one, keeping your category and flags. */
+const payCfg=()=>((docs._device||{}).payInbox)||null;
+// shop names match on their first distinctive word: "TESCO OSTRAVA" = "Tesco", "Café Lisboa" ≠ "Cafe Nero"
+const NAME_STOP=new Set(["cafe","restaurace","restaurant","bar","bistro","kavarna","pizzeria","shop","store","market","the","and","praha","prague","ostrava","brno","cze","czech","sro","spol","inc","ltd","gmbh","card","payment","platba","nakup"]);
+function nameKey(s){return norm(s).split(/[^a-z0-9]+/).filter(w=>w.length>=3&&!NAME_STOP.has(w)&&!/^\d+$/.test(w))[0]||""}
+function sameName(a,b){const x=nameKey(a),y=nameKey(b);return !!x&&x===y}
+function payHash(s){let h=0x811c9dc5;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return (h>>>0).toString(36)}
+const PAY_CUR=[[/a\$|aud/i,"AUD"],[/kč|czk/i,"CZK"],[/€|eur/i,"EUR"],[/£|gbp/i,"GBP"],[/zł|pln/i,"PLN"],[/\bft\b|huf/i,"HUF"],[/chf/i,"CHF"],[/nz\$|nzd/i,"NZD"],[/c\$|cad/i,"CAD"],[/us\$|usd/i,"USD"]];
+const DOLLARS=["AUD","USD","CAD","NZD"];
+// a plain "$" means your own dollar currency if you have one (an Australian iPhone shows A$ as "$")
+function payDollar(){const c=[baseCur(),cur2()].find(x=>DOLLARS.includes(x));return c||"USD"}
+function payMoney(s){const tx=String(s||"");if(!/\d/.test(tx)||payDate(tx))return null;const v=Math.abs(KCImport.parseAmt(tx));if(!(v>0))return null;
+  let c=null;for(const [re,code] of PAY_CUR)if(re.test(tx)){c=code;break}if(!c&&/\$/.test(tx))c=payDollar();return {v,c:c||baseCur()}}
+// dates as the Shortcut may write them: ISO 8601 (recommended), Czech "22. 10. 2026 15:07", "22/10/2026, 15:07",
+// "Oct 22, 2026 at 3:07 PM" or "22 Oct 2026 at 15:07"
+const MONTHS3=["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
+function payDate(s){const tx=String(s||"").trim();let m;
+  if((m=tx.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{1,2}):(\d{2})(?::\d{2}(?:\.\d+)?)?\s*(Z|[+-]\d{2}:?\d{2})?)?$/))){
+    if(m[6]){const d=new Date(tx.replace(" ","T"));return isNaN(d)?null:d}return new Date(+m[1],+m[2]-1,+m[3],+(m[4]||12),+(m[5]||0))}
+  const hm=x=>{const q=String(x||"").match(/(\d{1,2})[:.](\d{2})(?:[:.]\d{2})?\s*([ap]\.?\s?m\.?)?/i);if(!q)return [12,0];let h=+q[1];const ap=(q[3]||"").toLowerCase();if(ap.startsWith("p")&&h<12)h+=12;if(ap.startsWith("a")&&h===12)h=0;return [h,+q[2]]};
+  if((m=tx.match(/^(\d{1,2})\s*[./]\s*(\d{1,2})\s*[./]\s*(\d{4})(.*)$/))){const [h,mi]=hm(m[4]);const d=new Date(+m[3],+m[2]-1,+m[1],h,mi);return isNaN(d)||+m[2]>12?null:d}
+  if((m=tx.match(/^([a-z]{3})[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})(.*)$/i))&&MONTHS3.includes(m[1].toLowerCase())){const [h,mi]=hm(m[4]);return new Date(+m[3],MONTHS3.indexOf(m[1].toLowerCase()),+m[2],h,mi)}
+  if((m=tx.match(/^(\d{1,2})\.?\s+([a-z]{3})[a-z]*\.?\s+(\d{4})(.*)$/i))&&MONTHS3.includes(m[2].toLowerCase())){const [h,mi]=hm(m[4]);return new Date(+m[3],MONTHS3.indexOf(m[2].toLowerCase()),+m[1],h,mi)}
+  return null}
+// "KCPAY | Tesco | 123,45 Kč" (+ optional card name and ISO date) → ledger entry
+function payItem(line,whenIso,id){
+  const parts=String(line||"").replace(/^\s*KCPAY\s*[|:;-]?\s*/i,"").split(/\s*[|\n]\s*/).map(s=>s.trim()).filter(Boolean);if(!parts.length)return null;
+  let ai=payMoney(parts[1])?1:parts.findIndex(p=>payMoney(p)&&/[.,]\d{1,2}\b|kč|czk|€|eur|\$|£|zł|ft\b|chf|aud|usd|gbp/i.test(p));if(ai<0)ai=parts.findIndex(p=>payMoney(p));if(ai<0)return null;
+  const m=payMoney(parts[ai]);const di=parts.findIndex((p,ix)=>ix!==ai&&payDate(p));
+  const merchant=(parts.find((p,ix)=>ix!==ai&&ix!==di)||t("Apple Pay purchase")).replace(/\s+/g," ").slice(0,80);
+  const d=di>=0?payDate(parts[di]):new Date(whenIso||Date.now());const when=d&&!isNaN(d)?d:new Date();
+  const key=rbKey(merchant,""),cat=payCat(merchant,key);
+  // ts comes from the purchase time, so two devices collecting the same purchase create identical entries
+  const it={id,type:"expense",cat,amount:Math.round(m.v*100)/100,cur:m.c,note:merchant,date:iso(when),time:pad(when.getHours())+":"+pad(when.getMinutes()),ts:when.getTime(),src:"pay",key};
+  if(m.c!==baseCur()){it.orig=it.amount+" "+m.c;const r=rateOf(m.c);if(r)it.czk=Math.round(m.v*r*100)/100;else it.noRate=m.c}else it.czk=it.amount;
+  return it;
+}
+// category: your rule for that shop, else what you used last time at the same shop, else a guess from the name
+function payCat(merchant,key){const st=settings(),ok=c=>c&&catsOf("expense").includes(c);if(ok((st.rules||{})[key]))return st.rules[key];
+  let best=null;allItems().forEach(({i})=>{if(i.type==="expense"&&i.cat&&!i.parts&&sameName(i.note,merchant)&&(!best||i.date>best.date))best=i});
+  return best&&ok(best.cat)?best.cat:catOfKind(kindFromText(merchant)||"misc","expense")}
+// is entry x (Apple Pay or screenshot) the same purchase as entry i? Exact amounts match within 3 days;
+// foreign-currency amounts need the same shop, or the same day and amount within 2 %
+function payTwinScore(x,i){const days=Math.abs(dOf(x.date)-dOf(i.date))/DAY;if(days>3)return null;const a=+x.czk||0,b=+i.czk||0,diff=Math.abs(a-b);const same=sameName(x.note,i.note);
+  if(diff<=0.5)return days+(same?0:1.5);const foreign=x.orig||i.orig;if(!foreign)return null;
+  if(same&&diff<=Math.max(1,b*.03))return days+diff/Math.max(1,b)*10;if(days<=1&&diff<=Math.max(1,b*.02))return days+1+diff/Math.max(1,b)*10;return null}
+// a purchase the bank export already brought in shouldn't be added twice
+function payBankTwin(it){return allItems().some(({i:x})=>(x.src==="rb"||x.src==="csv")&&x.type==="expense"&&payTwinScore(x,it)!=null)}
+function payAdd(it){const k="m-"+it.date.slice(0,7);(docs[k]=docs[k]||{items:[]}).items=items(k).concat(it)}
+let payBusy=false,payLast=0;
+async function payCheck(manual){
+  const c=payCfg();if(!c||!key||payBusy)return;if(!manual&&Date.now()-payLast<20000)return;payBusy=true;payLast=Date.now();let added=0,waiting=0;
+  try{
+    const list=(await gh(c,"GET","/issues/"+c.issue+"/comments?per_page=100"))||[];const have=allIds(),done=new Set(c.done||[]),del=[];
+    for(const cm of list){if(!/^\s*KCPAY/i.test(cm.body||""))continue;const id="pay-"+cm.id;
+      if(!have.has(id)&&!done.has(id)){const it=payItem(cm.body,cm.created_at,id);if(!it)continue;if(it.noRate){waiting++;continue}
+        if(!payBankTwin(it)){payAdd(it);have.add(id);added++}}
+      done.add(id);del.push(cm.id)}
+    c.done=[...done].slice(-500);c.last=Date.now();c.err=waiting?t("Some purchases wait for an exchange rate. Check Settings → Currency & exchange rates."):"";if(added)c.added=(c.added||0)+added;
+    await persist();
+    for(const id of del){try{await gh(c,"DELETE","/issues/comments/"+id)}catch(_){}}
+    if(added){render();toast(t("Added {n} Apple Pay {e}",{n:added,e:pl(added,"payment")}))}else if(manual)toast(t("No new Apple Pay purchases."));
+  }catch(e){c.err=e&&e.status===401?t("GitHub rejected the access token. It may have expired: make a new one and connect again."):e&&(e.status===403||e.status===404)?t("The token can't reach the inbox. It needs Issues: Read and write for this repository."):t("Couldn't reach GitHub. It will try again when you're online.");if(manual)toast(c.err)}
+  finally{payBusy=false;renderPay()}
+}
+async function paySetup(){
+  const h=$("payHint");h.className="hint";const repo=$("payRepo").value.trim().replace(/^https?:\/\/github\.com\//,"").replace(/\.git$/,"").replace(/\/$/,"");const token=$("payToken").value.trim();
+  if(!/^[\w.-]+\/[\w.-]+$/.test(repo)){h.className="hint err";h.textContent=t("Enter the repository as owner/name, for example your-username/ledger-data.");return}
+  if(!token){h.className="hint err";h.textContent=t("Paste your access token.");return}
+  const cfg={repo,token};h.textContent=t("Checking the repository…");
+  try{const info=await gh(cfg,"GET","");if(!info){const e=new Error("nf");e.status=404;throw e}
+    if(!info.private){h.className="hint err";h.textContent=t("That repository is public. Make it private on GitHub first.");return}
+    if(info.has_issues===false){h.className="hint err";h.textContent=t("Issues are turned off for that repository. Turn them on under its Settings → General → Features, then try again.");return}
+    const iss=await gh(cfg,"POST","/issues",{title:"Kč Ledger · Apple Pay inbox",body:"Kč Ledger reads the comments here, adds them to your encrypted ledger and deletes them. Please don't close or delete this issue."});
+    docs._device=docs._device||{};docs._device.payInbox={repo,token,issue:iss.number,done:[],last:0,added:0};await persist();$("payToken").value="";h.textContent="";renderPay();
+    toast(t("Inbox ready. Now add the automation in Shortcuts on your iPhone."))}
+  catch(e){h.className="hint err";h.textContent=e.status===401?t("GitHub rejected the access token. It may have expired: make a new one and connect again."):(e.status===403||e.status===404||e.status===410)?t("The token can't reach that repository. Give it Issues: Read and write for this repository."):t("Couldn't reach GitHub. It will try again when you're online.")}
+}
+function payCopy(text){(navigator.clipboard?navigator.clipboard.writeText(text):Promise.reject()).then(()=>toast(t("Copied"))).catch(()=>toast(t("Couldn't copy. Select the text instead.")))}
+function renderPay(){
+  const on=$("payOn");if(!on)return;const c=payCfg();$("paySetup").hidden=!!c;on.hidden=!c;
+  if(!c){if(!$("payRepo").value&&syncCfg())$("payRepo").value=syncCfg().repo;return}
+  const url="https://api.github.com/repos/"+c.repo+"/issues/"+c.issue+"/comments";const tok=c.token;const masked="Bearer "+tok.slice(0,10)+"…"+tok.slice(-4);
+  const box=$("payRecipe");box.replaceChildren();
+  const row=(label,shown,copy)=>{const r=el("div","rcp");r.append(el("span","rl",label));const v=el("code","",shown);r.appendChild(v);if(copy!=null){const b=el("button","link",t("Copy"));b.type="button";b.addEventListener("click",()=>payCopy(copy));r.appendChild(b)}else r.appendChild(el("span"));box.appendChild(r)};
+  row(t("URL"),url,url);row(t("Method"),"POST",null);row(t("Header key"),"Authorization","Authorization");row(t("Header value"),masked,"Bearer "+tok);
+  row(t("Request body"),"JSON",null);row(t("Field (Text) key"),"body","body");row(t("Field value"),"KCPAY | ["+t("Merchant")+"] | ["+t("Amount")+"]","KCPAY | ");
+  $("payStatus").textContent=(c.last?t("Last checked {d}.",{d:new Date(c.last).toLocaleString(LOC(),{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}):t("Not checked yet."))+(c.added?" "+t("{n} added so far.",{n:c.added}):"")+(c.err?" "+c.err:"");
+}
+$("paySetupBtn").addEventListener("click",paySetup);
+$("payCheckBtn").addEventListener("click",()=>payCheck(true));
+$("payOffBtn").addEventListener("click",async()=>{const b=$("payOffBtn");if(!b.classList.contains("confirm")){b.classList.add("confirm");b.textContent=t("Tap again to turn off");return}
+  delete docs._device.payInbox;await persist();b.classList.remove("confirm");b.textContent=t("Turn off on this device");renderPay();toast(t("Apple Pay inbox turned off on this device."))});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&key)payCheck(false)});
+addEventListener("online",()=>payCheck(false));
+// lines from the private text-file route: "KCPAY | merchant | amount | 2026-10-22T11:37:00+02:00"
+function payFromText(tx,fileTime){const out=[];String(tx).split(/\r?\n/).forEach(line=>{if(!/^\s*KCPAY/i.test(line))return;const it=payItem(line,fileTime?new Date(fileTime).toISOString():null,"payf-"+payHash(line.trim()));if(it){delete it.noRate;out.push(it)}});return out}
+// the private route's how-to, with copy buttons
+const PAY_FILE="Kc Ledger Apple Pay.txt";
+function renderPayFile(){const box=$("payFileRecipe");if(!box)return;box.replaceChildren();
+  const row=(label,shown,copy)=>{const r=el("div","rcp");r.append(el("span","rl",label),el("code","",shown));const b=el("button","link",t("Copy"));b.type="button";b.addEventListener("click",()=>payCopy(copy));r.appendChild(b);box.appendChild(r)};
+  row(t("Text"),"KCPAY | ["+t("Merchant")+"] | ["+t("Amount")+"] | ["+t("Current Date")+"]","KCPAY | ");row(t("File Path"),PAY_FILE,PAY_FILE)}
+$("payImportBtn").addEventListener("click",()=>$("importFile").click());
+
 /* ---------- own pots carry over: what's left in a pot rolls into the next budget month ---------- */
 function potFromOf(name){const c=catList("expense").find(x=>x.n===name);return c&&c.pot?(c.potFrom||curP().s):null}
 // money available in a pot this period = this period's budget + what was left (or overspent) in earlier periods since the pot started
@@ -1992,7 +2106,7 @@ function updatePlan(){
 }
 
 /* ---------- display switches ---------- */
-const DISPLAY=[["Health",[["face","Health face and dial"],["streak","Streak"],["howcalc","How it's worked out"]]],
+const DISPLAY=[["Health",[["face","Health face and dial"],["face3d","3D face"],["streak","Streak"],["howcalc","How it's worked out"]]],
   ["Overview",[["flow","Where the money went"],["pace","Spending pace"],["schedule","Schedule"],["bars","Budget vs actual"],["donut","Where it went"],["heat","Day by day"],["places","Top places"],["trend","Last six months"]]],
   ["Savings",[["jars","Pots & goals"],["net","Savings over time"],["transfers","Money transferred in"]]],
   ["Child expenses",[["kidchart","Last six months"]]],
@@ -2000,7 +2114,7 @@ const DISPLAY=[["Health",[["face","Health face and dial"],["streak","Streak"],["
 const showOn=k=>(((docs.settings||{}).display)||{})[k]!==false;
 function applyDisplay(){
   document.querySelectorAll("[data-show]").forEach(p=>p.classList.toggle("dispoff",!showOn(p.dataset.show)));
-  document.body.classList.toggle("noanim",!showOn("anim"));
+  document.body.classList.toggle("noanim",!showOn("anim"));const hb=$("hDial");if(hb&&hb.querySelector("svg")){if(face3dWanted())face3dMount(hb);else face3dUnmount()}
 }
 function autoHide(){
   document.querySelectorAll("[data-auto]").forEach(p=>{let empty;
@@ -2099,7 +2213,7 @@ async function checkCelebrations(){
     goalList().forEach(g=>{if(!(+g.target>0))return;const m=Math.min(100,Math.floor(goalProgress(g)/g.target*4)*25);const was=st.cele.goals[g.id];
       if(was==null||m!==was){st.cele.goals[g.id]=m;changed=true;if(was!=null&&m>was)msgs.push(m>=100?t("{g} reached. Well done!",{g:g.name}):t("{g} is {m} % of the way there.",{g:g.name,m}))}});
     if(changed)await persist();
-    if(msgs.length&&showOn("cele")){confetti();toast(msgs.join(" "));const f=$("hDial");if(f){f.classList.add("beam");setTimeout(()=>f.classList.remove("beam"),2600)}}
+    if(msgs.length&&showOn("cele")){confetti();toast(msgs.join(" "));const f=$("hDial");if(f){f.classList.add("beam");setTimeout(()=>f.classList.remove("beam"),2600)}face3dBounce();}
   }finally{celeBusy=false}
 }
 
@@ -2117,6 +2231,66 @@ function renderStreak(){
   panel.hidden=false;$("streakPill").textContent=streak+" "+pl(streak,"day");$("streakPill").className="pill "+(streak?"ok":"");
   $("streakText").textContent=streak?t("{n} {d} in a row within your usual {x} a day.",{n:streak,d:pl(streak,"day"),x:fmt(o.normal)})+(todayOk?" "+t("Today is on track so far."):""):t("No streak yet. Stay within {x} today to start one.",{x:fmt(o.normal)});
 }
+
+/* ---------- 3D Health face: a lit sphere drawn with WebGL, no libraries ----------
+   It only draws while something is moving (a drag, a tilt, a bounce or the mouth changing) and only while
+   the Health tab is on screen, so it costs nothing when idle or in the background. */
+const F3={on:false,gl:null,cv:null,u:{},yaw:0,pitch:0,vy:0,vp:0,ty:0,tp:0,tiltY:0,tiltP:0,curve:0,col:[.12,.6,.38],feat:[.09,.12,.16],
+  squash:1,bounceT:-1,drag:null,raf:0,tiltOn:false};
+const F3_FS=`precision mediump float;uniform vec2 res;uniform vec3 col,feat;uniform float yaw,pitch,curve,squash;
+void main(){vec2 uv=(gl_FragCoord.xy/res)*2.0-1.0;uv/=0.94;uv.y/=squash;uv.x*=squash;float r2=dot(uv,uv);if(r2>1.0){gl_FragColor=vec4(0.0);return;}
+vec3 n=vec3(uv,sqrt(1.0-r2));float cy=cos(yaw),sy=sin(yaw),cp=cos(pitch),sp=sin(pitch);
+vec3 a=vec3(cy*n.x-sy*n.z,n.y,sy*n.x+cy*n.z);vec3 l=vec3(a.x,cp*a.y+sp*a.z,-sp*a.y+cp*a.z);vec3 c=col;
+if(l.z>0.0){vec2 p=l.xy;vec2 e1=(p-vec2(-0.3,0.22))/vec2(0.1,0.13);vec2 e2=(p-vec2(0.3,0.22))/vec2(0.1,0.13);
+ float fe=1.0-smoothstep(0.8,1.0,min(dot(e1,e1),dot(e2,e2)));float w=0.36;float y0=-0.24;float x=p.x/w;
+ float fy=y0+curve*0.17*(x*x)-curve*0.06;float th=0.07;float m=abs(x)<1.0?abs(p.y-fy):1.0;float fm=1.0-smoothstep(th*0.7,th,m);
+ float ey=y0+curve*0.11;float de=min(length(p-vec2(-w,ey)),length(p-vec2(w,ey)));fm=max(fm,1.0-smoothstep(th*0.7,th,de));
+ c=mix(c,feat,max(fe,fm)*smoothstep(0.0,0.15,l.z));}
+vec3 L=normalize(vec3(-0.45,0.6,0.75));float d=max(dot(n,L),0.0);vec3 h=normalize(L+vec3(0.0,0.0,1.0));
+float spec=pow(max(dot(n,h),0.0),48.0)*0.4;float rim=pow(1.0-n.z,2.5)*0.22;vec3 o=c*(0.5+0.62*d)+vec3(spec)+rim*c*0.6;
+float edge=1.0-smoothstep(0.986,1.0,sqrt(r2));gl_FragColor=vec4(o*edge,edge);}`;
+function f3Hex(v){v=String(v).trim();if(v[0]!=="#")return null;if(v.length===4)v="#"+v[1]+v[1]+v[2]+v[2]+v[3]+v[3];const n=parseInt(v.slice(1),16);return [(n>>16&255)/255,(n>>8&255)/255,(n&255)/255]}
+function f3Var(name){return f3Hex(getComputedStyle(document.documentElement).getPropertyValue(name))}
+function face3dWanted(){return showOn("face3d")&&!reduceMotion()}
+function face3dMount(box){
+  if(!face3dWanted()){face3dUnmount();return}if(F3.on&&F3.cv&&F3.cv.parentNode===box)return;
+  const cv=document.createElement("canvas");cv.className="face3d";cv.setAttribute("aria-hidden","true");
+  const gl=cv.getContext("webgl",{premultipliedAlpha:true,alpha:true,antialias:true});if(!gl)return;
+  const sh=(type,src)=>{const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);return gl.getShaderParameter(s,gl.COMPILE_STATUS)?s:null};
+  const vs=sh(gl.VERTEX_SHADER,"attribute vec2 p;void main(){gl_Position=vec4(p,0.0,1.0);}"),fs=sh(gl.FRAGMENT_SHADER,F3_FS);if(!vs||!fs)return;
+  const pr=gl.createProgram();gl.attachShader(pr,vs);gl.attachShader(pr,fs);gl.linkProgram(pr);if(!gl.getProgramParameter(pr,gl.LINK_STATUS))return;gl.useProgram(pr);
+  const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
+  const loc=gl.getAttribLocation(pr,"p");gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+  ["res","col","feat","yaw","pitch","curve","squash"].forEach(k=>F3.u[k]=gl.getUniformLocation(pr,k));
+  Object.assign(F3,{on:true,gl,cv});box.appendChild(cv);box.classList.add("f3d");
+  // drag to turn; on a computer the face also follows the pointer
+  const pos=e=>{const r=box.getBoundingClientRect();return [((e.clientX-r.left)/r.width-.5)*2,((e.clientY-r.top)/r.height-.5)*2]};
+  box.addEventListener("pointerdown",e=>{F3.drag=pos(e);box.setPointerCapture&&box.setPointerCapture(e.pointerId);face3dTiltPermission();face3dKick()});
+  box.addEventListener("pointermove",e=>{if(!F3.on)return;const [x,y]=pos(e);if(F3.drag||e.pointerType==="mouse"){F3.ty=clamp(x,-1.2,1.2)*.75;F3.tp=clamp(y,-1.2,1.2)*.55;face3dKick()}});
+  const end=()=>{F3.drag=null;F3.ty=0;F3.tp=0;face3dKick()};box.addEventListener("pointerup",end);box.addEventListener("pointercancel",end);box.addEventListener("pointerleave",e=>{if(e.pointerType==="mouse")end()});
+  face3dSize();face3dKick();
+}
+function face3dUnmount(){if(!F3.on)return;cancelAnimationFrame(F3.raf);const box=F3.cv&&F3.cv.parentNode;if(box)box.classList.remove("f3d");F3.cv&&F3.cv.remove();Object.assign(F3,{on:false,gl:null,cv:null})}
+function face3dSize(){if(!F3.on)return;const r=F3.cv.getBoundingClientRect(),dpr=Math.min(2,devicePixelRatio||1);const w=Math.max(2,Math.round(r.width*dpr));if(F3.cv.width!==w){F3.cv.width=w;F3.cv.height=w}}
+// tilt the phone to turn the face (iPhones ask once, after a tap)
+function face3dTiltPermission(){if(F3.tiltOn)return;const go=()=>{F3.tiltOn=true;addEventListener("deviceorientation",e=>{if(e.gamma==null)return;F3.tiltY=clamp(e.gamma/45,-1,1)*.45;F3.tiltP=clamp((e.beta-45)/45,-1,1)*.3;face3dKick()})};
+  if(window.DeviceOrientationEvent&&typeof DeviceOrientationEvent.requestPermission==="function")DeviceOrientationEvent.requestPermission().then(s=>{if(s==="granted")go()}).catch(()=>{});else if(window.DeviceOrientationEvent)go()}
+function face3dCurve(c){if(!F3.on)return;const was=F3.curve;F3.curve=c;if(c>.3&&was<=.3&&F3.bounceT<0)F3.bounceT=performance.now();face3dKick()}
+function face3dColor(mix){const good=f3Var("--h-good"),off=f3Var("--h-off"),mut=f3Var("--muted"),pan=f3Var("--panel");if(pan)F3.feat=pan;
+  if(mix==null){if(mut)F3.col=mut}else if(good&&off){const k=mix/100;F3.col=good.map((g,i)=>off[i]+(g-off[i])*k)}face3dKick()}
+function face3dBounce(){F3.bounceT=performance.now();face3dKick()}
+function face3dKick(){if(!F3.on||F3.raf)return;F3.raf=requestAnimationFrame(face3dFrame)}
+function face3dFrame(now){
+  F3.raf=0;if(!F3.on)return;const box=F3.cv.parentNode;if(!box||!box.offsetParent||document.hidden)return;face3dSize();
+  // springs towards where the finger (or tilt) wants the face to look
+  const ty=F3.ty+F3.tiltY,tp=F3.tp+F3.tiltP;F3.vy=(F3.vy+(ty-F3.yaw)*.12)*.78;F3.vp=(F3.vp+(tp-F3.pitch)*.12)*.78;F3.yaw+=F3.vy;F3.pitch+=F3.vp;
+  let bouncing=false;if(F3.bounceT>=0){const q=(now-F3.bounceT)/900;if(q>=1){F3.bounceT=-1;F3.squash=1}else{F3.squash=1+.07*Math.sin(q*Math.PI*3)*(1-q);bouncing=true}}
+  const gl=F3.gl,u=F3.u;gl.viewport(0,0,F3.cv.width,F3.cv.height);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.uniform2f(u.res,F3.cv.width,F3.cv.height);gl.uniform3fv(u.col,F3.col);gl.uniform3fv(u.feat,F3.feat);gl.uniform1f(u.yaw,F3.yaw);gl.uniform1f(u.pitch,-F3.pitch);
+  gl.uniform1f(u.curve,F3.curve);gl.uniform1f(u.squash,F3.squash);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+  const moving=Math.abs(F3.vy)+Math.abs(F3.vp)>.0005||Math.abs(ty-F3.yaw)+Math.abs(tp-F3.pitch)>.002;if(moving||bouncing||F3.drag)face3dKick();
+}
+addEventListener("resize",()=>face3dKick());document.addEventListener("visibilitychange",()=>{if(!document.hidden)face3dKick()});
 
 /* ---------- start ---------- */
 let rz;addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(renderCharts,150)});
