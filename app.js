@@ -3,7 +3,7 @@
    A random data key encrypts the ledger and images. That key is stored wrapped by your passcode
    (PBKDF2-SHA256, 600k rounds → AES-GCM) and, if you turn it on, by a Face ID passkey (WebAuthn PRF → HKDF → AES-GCM). */
 "use strict";
-const ITER=600000,DAY=864e5,APP_VERSION=15;
+const ITER=600000,DAY=864e5,APP_VERSION=16;
 const $=id=>document.getElementById(id);
 const te=new TextEncoder(),td=new TextDecoder();
 const b64=buf=>{let s="";const b=buf instanceof Uint8Array?buf:new Uint8Array(buf);for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)};
@@ -2346,8 +2346,7 @@ function renderStreak(){
   panel.hidden=false;$("streakPill").textContent=streak+" "+pl(streak,"day");$("streakPill").className="pill "+(streak?"ok":"");
   $("streakText").textContent=streak?t("{n} {d} in a row within your usual {x} a day.",{n:streak,d:pl(streak,"day"),x:fmt(o.normal)})+(todayOk?" "+t("Today is on track so far."):""):t("No streak yet. Stay within {x} today to start one.",{x:fmt(o.normal)});
   const bt=backOnTrack(o),bk=$("streakBack");if(bk){bk.hidden=!bt;if(bt){bk.className="streak-back "+(bt.k===0?"ok":bt.k==null?"bad":"warn");
-    bk.replaceChildren(el("b","",bt.k===0?t("On track"):bt.k==null?t("Over for this period"):t("{n} no-spend {d} to get back on track",{n:bt.k,d:pl(bt.k,"day")})),
-      el("span","",bt.k===0?t("You can spend your usual {x} a day and still finish on budget.",{x:fmt(o.normal)}):bt.k==null?t("Even with no more spending you'd finish {x} over. A fresh start comes on {d}.",{x:fmt(bt.over),d:dShort(shiftP(curP(),1).s)}):t("Spend nothing on everyday things for {n} {d}, including today, and you're back to your usual {x} a day.",{n:bt.k,d:pl(bt.k,"day"),x:fmt(o.normal)})))}}
+    bk.replaceChildren(el("span","",t("Catch up")),el("b","amt",bt.k==null?t("not this period"):bt.k+" "+pl(bt.k,"day")))}}
 }
 
 /* ---------- 3D Health face: a lit sphere drawn with WebGL, no libraries ----------

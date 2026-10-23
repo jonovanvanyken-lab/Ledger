@@ -595,6 +595,6 @@ body.noanim *,body.noanim *::before{animation:none!important;transition:none!imp
 .lock-quote figcaption{margin-top:6px;font-size:.85rem;color:var(--muted)}
 .salary-panel .btnrow,.salary-panel button{margin-top:8px}
 .salary-diff{display:flex;flex-direction:column;gap:8px}
-.streak-back{display:flex;flex-direction:column;gap:2px;margin:10px 0 0;padding:10px 12px;border-radius:10px;background:color-mix(in srgb,var(--muted) 10%,transparent)}
-.streak-back b{font-size:.98rem}.streak-back span{font-size:.88rem;color:var(--muted)}
-.streak-back.ok b{color:var(--ok,#3fb27f)}.streak-back.warn b{color:var(--warn,#e0a63a)}.streak-back.bad b{color:var(--bad,#e5636b)}
+.streak-back{display:flex;justify-content:space-between;align-items:baseline;margin:10px 0 0;padding:10px 12px;border-radius:10px;background:color-mix(in srgb,var(--muted) 10%,transparent)}
+.streak-back span{font-size:.92rem;color:var(--muted)}.streak-back b{font-size:1.1rem}
+.streak-back.ok b{color:var(--ok)}.streak-back.warn b{color:var(--warn)}.streak-back.bad b{color:var(--bad)}

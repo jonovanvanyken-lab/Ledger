@@ -979,7 +979,6 @@ window.KC_CS={
 "2. Automatic: a private inbox on GitHub": "2. Automaticky: soukromá schránka na GitHubu",
 "Kč Ledger collects each purchase by itself whenever you open it, stores it encrypted and deletes it from GitHub. Until then, the shop name and amount sit unencrypted in your private repository.": "Kč Ledger si každý nákup vyzvedne sám, kdykoli ho otevřete, uloží ho zašifrovaný a z GitHubu ho smaže. Do té doby jsou název obchodu a částka nezašifrované ve vašem soukromém repozitáři.",
 "Purchases made without an internet connection can't reach the inbox. Your bank export still brings them in, or add Append to Text File to the same automation as a backup.": "Nákupy bez připojení k internetu se do schránky nedostanou. Doplní je bankovní export, nebo do stejné automatizace přidejte jako zálohu i „Append to Text File“.",
-"Kč Ledger · version 15": "Kč Ledger · verze 15",
 "Salary check-in": "Kontrola výplaty",
 "Includes {x} less salary than usual": "Zahrnuje o {x} nižší výplatu než obvykle",
 "{x} less salary than usual is covered from {n}": "O {x} nižší výplatu pokrývá {n}",
@@ -1007,17 +1006,15 @@ window.KC_CS={
 "This period: {a} came in (expected {b}).": "V tomto období přišlo {a} (očekáváno {b}).",
 "{x} less, covered from {n}.": "O {x} méně, pokryto z {n}.",
 "{x} less, taken from everyday spending.": "O {x} méně, odečteno z běžných výdajů.",
-"Over for this period": "V tomto období přes rozpočet",
-"{n} no-spend {d} to get back on track": "{n} {d} bez útraty a jste zpět v plánu",
-"You can spend your usual {x} a day and still finish on budget.": "Můžete utrácet obvyklých {x} denně a přesto skončit v rozpočtu.",
-"Even with no more spending you'd finish {x} over. A fresh start comes on {d}.": "I bez další útraty byste skončili {x} přes rozpočet. Nový začátek přijde {d}.",
-"Spend nothing on everyday things for {n} {d}, including today, and you're back to your usual {x} a day.": "Neutrácejte za běžné věci {n} {d} včetně dneška a budete zpět na obvyklých {x} denně.",
 "Has your salary arrived?": "Přišla výplata?",
 "Your pay can change a little each month, for example when university meals are taken off it, and it can arrive a day or two early or late. Tap Salary arrived and enter what actually came in.": "Výplata se může každý měsíc trochu lišit, například když se z ní strhávají obědy na univerzitě, a může přijít o den či dva dříve nebo později. Klepněte na Výplata přišla a zadejte, kolik skutečně přišlo.",
 "If it's less than usual, take the difference from": "Když je nižší než obvykle, rozdíl vzít z",
 "Pay that arrives up to 4 days before payday counts for the new period. A bank export of the same salary replaces what you entered. The app keeps track only; it doesn't move money.": "Výplata, která přijde až 4 dny před výplatním dnem, se počítá do nového období. Bankovní výpis se stejnou výplatou nahradí to, co jste zadali. Aplikace jen eviduje, peníze nepřesouvá.",
 "Your bank export already shows {x} on {d}.": "Bankovní výpis už ukazuje {x} dne {d}.",
 "{x} less than usual, covered from {n}. Remember to move it in your bank.": "O {x} méně než obvykle, pokryto z {n}. Nezapomeňte peníze převést v bance.",
-"{x} less than usual comes out of everyday spending.": "O {x} méně než obvykle se odečte z běžných výdajů."
+"{x} less than usual comes out of everyday spending.": "O {x} méně než obvykle se odečte z běžných výdajů.",
+"Catch up": "Dohnat",
+"not this period": "v tomto období ne",
+"Kč Ledger · version 16": "Kč Ledger · verze 16"
 };
 window.KC_PL={"day": {"en": ["day", "days"], "cs": ["den", "dny", "dní"]}, "payment": {"en": ["payment", "payments"], "cs": ["platba", "platby", "plateb"]}, "image": {"en": ["image", "images"], "cs": ["obrázek", "obrázky", "obrázků"]}, "entry": {"en": ["entry", "entries"], "cs": ["položka", "položky", "položek"]}, "transaction": {"en": ["transaction", "transactions"], "cs": ["transakce", "transakce", "transakcí"]}, "category": {"en": ["category", "categories"], "cs": ["kategorie", "kategorie", "kategorií"]}};
