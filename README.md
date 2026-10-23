@@ -71,6 +71,10 @@ Text recognition: tesseract.js (Apache 2.0). PDF statements: jsPDF (MIT) with a 
 - **Display** (Settings) switches each chart and graphic on or off, plus animations and celebrations. Empty sections hide themselves.
 - New: one-off check after imports, spending alerts, Year in review, Owed & owing, money-flow chart, pot and goal jars, celebrations and the under-budget streak.
 
+## Version 14
+
+- **Fix:** an Apple Pay purchase (or any edit) made while a sync was running could be lost when the sync finished. Changes made during a sync are now kept and sent with the next one, and Apple Pay purchases are only collected once a sync has finished.
+
 ## Version 13
 
 - **Apple Pay purchases** (Settings → Apple Pay purchases): an iPhone Shortcuts automation records each in-store Apple Pay tap.

@@ -3,7 +3,7 @@
    A random data key encrypts the ledger and images. That key is stored wrapped by your passcode
    (PBKDF2-SHA256, 600k rounds → AES-GCM) and, if you turn it on, by a Face ID passkey (WebAuthn PRF → HKDF → AES-GCM). */
 "use strict";
-const ITER=600000,DAY=864e5,APP_VERSION=13;
+const ITER=600000,DAY=864e5,APP_VERSION=14;
 const $=id=>document.getElementById(id);
 const te=new TextEncoder(),td=new TextDecoder();
 const b64=buf=>{let s="";const b=buf instanceof Uint8Array?buf:new Uint8Array(buf);for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)};
@@ -1376,7 +1376,7 @@ async function syncNow(manual){
       await saving;const remoteFile=await ghGetFile(cfg,"vault.json");let remoteDocs=null,remoteRec=null;
       if(remoteFile){remoteRec=JSON.parse(remoteFile.text);
         try{remoteDocs=await openBody(key,remoteRec)}catch(_){pendingJoin={rec:remoteRec};setSyncUI();h.className="hint";h.textContent="";showTab("settings");setTimeout(()=>$("syncPanel").scrollIntoView({behavior:"smooth"}),60);return}}
-      const local=stripDevice(docs);const base=(docs._device||{}).base||null;
+      const local=JSON.parse(JSON.stringify(stripDevice(docs)));const base=(docs._device||{}).base||null;
       const merged=remoteDocs?mergeDocs(base,local,remoteDocs):{docs:local,conflicts:0};
       // a passcode changed on another device carries over (same data key underneath)
       let kp=keys.pass;if(remoteRec&&remoteRec.keys&&remoteRec.keys.pass&&(remoteRec.keys.pass.ts||0)>(kp.ts||0))kp=remoteRec.keys.pass;
@@ -1385,8 +1385,10 @@ async function syncNow(manual){
       const n=refsOf(merged.docs);await uploadImages(cfg,n);
       if(changedRemote){const rec=await seal(merged.docs,{pass:kp});rec.kind="kc-sync";
         try{await ghPut(cfg,"vault.json",JSON.stringify(rec),remoteFile&&remoteFile.sha)}catch(e){if(e.status===409||e.status===422)continue;throw e}}
-      const dev=docs._device;docs=merged.docs;docs._device=dev;dev.base=JSON.parse(JSON.stringify(merged.docs));dev.sync.last=Date.now();delete dev.sync.error;await runAuto();await migrate();applyCats();fillFilterCats();fillCats();
-      await persist();render();setSyncUI();
+      // anything changed on this device while the sync was talking to GitHub (an Apple Pay purchase, an edit) is kept and sent next time
+      const nowLocal=stripDevice(docs);let fin=merged.docs,late=false;if(canon(nowLocal)!==canon(local)){fin=mergeDocs(local,nowLocal,merged.docs).docs;late=true}
+      const dev=docs._device;docs=fin;docs._device=dev;dev.base=JSON.parse(JSON.stringify(merged.docs));dev.sync.last=Date.now();delete dev.sync.error;await runAuto();await migrate();applyCats();fillFilterCats();fillCats();
+      await persist();render();setSyncUI();if(late)setTimeout(()=>syncSoon(1000),0);
       if(manual||merged.conflicts||passChanged){h.className="hint ok";h.textContent=t("Synced.")+(merged.conflicts?" "+t("{n} {e} edited on both devices; both versions are kept and marked.",{n:merged.conflicts,e:pl(merged.conflicts,"entry")}):"")+(passChanged?" "+t("Your passcode was changed on another device, so use that one from now on."):"")}
       return;
     }
@@ -1880,7 +1882,7 @@ function payBankTwin(it){return allItems().some(({i:x})=>(x.src==="rb"||x.src===
 function payAdd(it){const k="m-"+it.date.slice(0,7);(docs[k]=docs[k]||{items:[]}).items=items(k).concat(it)}
 let payBusy=false,payLast=0;
 async function payCheck(manual){
-  const c=payCfg();if(!c||!key||payBusy)return;if(!manual&&Date.now()-payLast<20000)return;payBusy=true;payLast=Date.now();let added=0,waiting=0;
+  const c=payCfg();if(!c||!key||payBusy)return;if(inSync){setTimeout(()=>payCheck(manual),1500);return}if(!manual&&Date.now()-payLast<20000)return;payBusy=true;payLast=Date.now();let added=0,waiting=0;
   try{
     const list=(await gh(c,"GET","/issues/"+c.issue+"/comments?per_page=100"))||[];const have=allIds(),done=new Set(c.done||[]),del=[];
     for(const cm of list){if(!/^\s*KCPAY/i.test(cm.body||""))continue;const id="pay-"+cm.id;

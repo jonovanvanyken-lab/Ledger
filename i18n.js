@@ -979,6 +979,6 @@ window.KC_CS={
 "2. Automatic: a private inbox on GitHub": "2. Automaticky: soukromá schránka na GitHubu",
 "Kč Ledger collects each purchase by itself whenever you open it, stores it encrypted and deletes it from GitHub. Until then, the shop name and amount sit unencrypted in your private repository.": "Kč Ledger si každý nákup vyzvedne sám, kdykoli ho otevřete, uloží ho zašifrovaný a z GitHubu ho smaže. Do té doby jsou název obchodu a částka nezašifrované ve vašem soukromém repozitáři.",
 "Purchases made without an internet connection can't reach the inbox. Your bank export still brings them in, or add Append to Text File to the same automation as a backup.": "Nákupy bez připojení k internetu se do schránky nedostanou. Doplní je bankovní export, nebo do stejné automatizace přidejte jako zálohu i „Append to Text File“.",
-"Kč Ledger · version 13": "Kč Ledger · verze 13"
+"Kč Ledger · version 14": "Kč Ledger · verze 14"
 };
 window.KC_PL={"day": {"en": ["day", "days"], "cs": ["den", "dny", "dní"]}, "payment": {"en": ["payment", "payments"], "cs": ["platba", "platby", "plateb"]}, "image": {"en": ["image", "images"], "cs": ["obrázek", "obrázky", "obrázků"]}, "entry": {"en": ["entry", "entries"], "cs": ["položka", "položky", "položek"]}, "transaction": {"en": ["transaction", "transactions"], "cs": ["transakce", "transakce", "transakcí"]}, "category": {"en": ["category", "categories"], "cs": ["kategorie", "kategorie", "kategorií"]}};
