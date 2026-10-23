@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="app.css?v=14">
+<link rel="stylesheet" href="app.css?v=15">
 <title>Kč Ledger</title>
 </head>
 <body>
@@ -38,7 +38,8 @@
       <button class="primary" id="lockBtn" type="submit">Unlock</button>
       <p class="hint" id="lockHint"></p>
     </form>
-    <p class="fine" id="lockVer">Kč Ledger · version 14</p>
+    <figure class="lock-quote" id="lockQuote" hidden><blockquote id="lockQuoteText"></blockquote><figcaption id="lockQuoteBy"></figcaption></figure>
+    <p class="fine" id="lockVer">Kč Ledger · version 15</p>
     <p class="fine" id="lockFine" hidden>Your entries are encrypted on this device. Nobody, including the app's host, can read them. There is no passcode reset: if you forget it, only a backup can bring your data back.</p>
   </div>
 </main>
@@ -84,10 +85,16 @@
       <span class="hsub" id="hPerDaySub"></span>
       <div class="hcompare" id="hCompare"></div>
     </div>
+    <div class="panel salary-panel" id="salaryPanel" hidden data-show="salary">
+      <div class="panel-head"><h2>Has your salary arrived?</h2></div>
+      <p class="small muted" id="salaryText"></p>
+      <button class="primary" id="salaryBtn" type="button">Salary arrived</button>
+    </div>
     <div class="panel" id="streakPanel" hidden data-show="streak">
       <div class="panel-head"><h2>Streak</h2><span class="pill" id="streakPill"></span></div>
       <div class="streak" id="streakDots" aria-hidden="true"></div>
       <p class="small muted" id="streakText"></p>
+      <p class="streak-back" id="streakBack" hidden></p>
     </div>
     <div class="panel" data-show="howcalc">
       <h2>How it's worked out</h2>
@@ -391,6 +398,17 @@
       </div>
     </details>
 
+    <details class="panel set-sec" id="secSalary">
+      <summary><h2>Salary</h2></summary>
+      <div class="fields">
+        <p class="small muted">Your pay can change a little each month, for example when university meals are taken off it, and it can arrive a day or two early or late. Tap Salary arrived and enter what actually came in.</p>
+        <button class="primary" id="salaryBtn2" type="button">Salary arrived</button>
+        <div class="field"><label class="label" for="salCoverSrc">If it's less than usual, take the difference from</label><select id="salCoverSrc"></select></div>
+        <p class="hint" id="salInfo"></p>
+        <p class="fine">Pay that arrives up to 4 days before payday counts for the new period. A bank export of the same salary replaces what you entered. The app keeps track only; it doesn't move money.</p>
+      </div>
+    </details>
+
     <details class="panel set-sec" id="secRecurring">
       <summary><h2>Pay, bills &amp; reminders</h2></summary>
       <div class="panel-head"><span class="small muted">Recurring items</span><button class="link" id="recAdd" type="button">+ New</button></div>
@@ -535,7 +553,7 @@
         <button class="danger" id="eraseBtn" type="button">Erase all data</button>
       </details>
     </details>
-    <p class="fine hfine">Kč Ledger · version 14</p>
+    <p class="fine hfine">Kč Ledger · version 15</p>
   </section>
 
   <nav class="tabbar" aria-label="Sections">
@@ -562,9 +580,9 @@
   <div class="viewer-bar"><button class="icon-btn" id="viewNext">Next image</button><span class="spacer"></span><button class="danger" id="viewDel">Remove image</button></div>
 </div>
 <div id="toast" class="toast" role="status" hidden></div>
-<script src="i18n.js?v=14"></script>
-<script src="import.js?v=14"></script>
-<script src="report.js?v=14"></script>
-<script src="app.js?v=14"></script>
+<script src="i18n.js?v=15"></script>
+<script src="import.js?v=15"></script>
+<script src="report.js?v=15"></script>
+<script src="app.js?v=15"></script>
 </body>
 </html>

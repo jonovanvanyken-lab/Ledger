@@ -71,6 +71,12 @@ Text recognition: tesseract.js (Apache 2.0). PDF statements: jsPDF (MIT) with a 
 - **Display** (Settings) switches each chart and graphic on or off, plus animations and celebrations. Empty sections hide themselves.
 - New: one-off check after imports, spending alerts, Year in review, Owed & owing, money-flow chart, pot and goal jars, celebrations and the under-budget streak.
 
+## Version 15
+
+- **Back on track** (Health → Streak): how many days without everyday spending it takes to get back to your usual daily allowance.
+- **Salary arrived** (Health card around payday, or Settings → Salary): enter what actually came in. If it's less than usual, choose where the difference comes from: everyday spending, an account or a savings category. Pay that arrives up to 4 days early counts for the new period. A bank export of the same salary replaces what you entered.
+- **Quote of the day** on the lock screen, in English or Czech.
+
 ## Version 14
 
 - **Fix:** an Apple Pay purchase (or any edit) made while a sync was running could be lost when the sync finished. Changes made during a sync are now kept and sent with the next one, and Apple Pay purchases are only collected once a sync has finished.

@@ -3,7 +3,7 @@
    A random data key encrypts the ledger and images. That key is stored wrapped by your passcode
    (PBKDF2-SHA256, 600k rounds → AES-GCM) and, if you turn it on, by a Face ID passkey (WebAuthn PRF → HKDF → AES-GCM). */
 "use strict";
-const ITER=600000,DAY=864e5,APP_VERSION=14;
+const ITER=600000,DAY=864e5,APP_VERSION=15;
 const $=id=>document.getElementById(id);
 const te=new TextEncoder(),td=new TextDecoder();
 const b64=buf=>{let s="";const b=buf instanceof Uint8Array?buf:new Uint8Array(buf);for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)};
@@ -36,7 +36,7 @@ function translateDom(root){
     if(e[k]==null){const v=e.getAttribute(a);if(d[v]==null)return;e[k]=v}e.setAttribute(a,LANG==="cs"&&d[e[k]]!=null?d[e[k]]:e[k])}));
 }
 function setLang(l){LANG=l==="cs"?"cs":"en";document.documentElement.lang=LANG;try{localStorage.setItem("kc-lang",LANG)}catch(_){}translateDom(document.body);
-  document.querySelectorAll("[data-lang]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.lang===LANG)))}
+  document.querySelectorAll("[data-lang]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.lang===LANG)));try{showQuote()}catch(_){}}
 const mName=(y,m,short)=>new Date(y,m,1).toLocaleDateString(LOC(),short?{month:"short"}:{month:"long",year:"numeric"});
 const dShort=s=>dOf(s).toLocaleDateString(LOC(),{day:"numeric",month:"short"});
 const dLong=s=>dOf(s).toLocaleDateString(LOC(),{day:"numeric",month:"long",year:"numeric"});
@@ -148,6 +148,7 @@ async function showApp(){
   showTab("health");render();armIdle();updateRates(false);syncSoon(800);setTimeout(()=>payCheck(false),1200);
 }
 function lock(){
+  try{showQuote()}catch(_){}
   clearTimeout(syncT);pendingJoin=null;key=null;rawKey=null;keys=null;docs={};closeViewer();closeReview();closeSheet();
   ["ledger","bars","accts","trend","pace","bills","donut","donutLegend","heat","dayList","merchants","goals","invSplit","invChart","netChart","auChart","banners","recap","hDial","hSum","hChecks","hCompare","setCats","setSave","recList","wzBody","kidList","kidSugg","kidBalance","kidMonth","kidChart","setInc","rateRows","debtList","flow","jars","streakDots","payRecipe"].forEach(id=>{const e=$(id);if(e)e.replaceChildren()});
   document.querySelectorAll("#app input,#wizard input").forEach(i=>{if(i.type!=="file"&&i.type!=="checkbox"&&i.type!=="radio")i.value=""});
@@ -359,7 +360,7 @@ function render(){
   $("kSaved").textContent=fmt(tt.saving);$("kSavedOf").textContent=t("of {x} target",{x:fmt(tg)});
   $("kIncome").textContent=fmt(tt.income);$("kIncomeSub").textContent=tt.fromIn?t("+ {x} transferred in",{x:fmt(tt.fromIn)}):t("earned this period");
   const os=$("oneoffStrip");os.hidden=!tt.oneoff;if(tt.oneoff){os.replaceChildren(el("span","",t("One-off costs, kept out of the budget")),el("b","amt",fmt(tt.oneoff)));os.onclick=()=>filterTo("__oneoff")}
-  setSyncUI();renderHealth();renderBars(tt,s);renderBills();renderBanners();renderRecap();renderMerchants();renderEntries();renderGoals();renderInvest();renderAccounts();renderAU();renderBio();renderKids();renderDebts();renderJars();renderStreak();setTimeout(checkCelebrations,600);
+  setSyncUI();renderHealth();renderBars(tt,s);renderBills();renderBanners();renderRecap();renderMerchants();renderEntries();renderGoals();renderInvest();renderAccounts();renderAU();renderBio();renderKids();renderDebts();renderJars();renderStreak();renderSalary();setTimeout(checkCelebrations,600);
   if(!$("tab-settings").dataset.dirty)fillSettings();renderRecList();
   renderCharts();
 }
@@ -382,6 +383,7 @@ function renderPace(){
   const plan=[0],act=[0];const daily=Array(dim+1).fill(0);
   pItems(p).forEach(i=>{const v=everydayCzk(i);if(v){const d=dayIdx(p,i.date);if(d>=1&&d<=dim)daily[d]+=v}});
   {const bc=billCover(p);const f=bc.total?bc.uncovered/bc.total:0;Object.entries(bc.byIdx).forEach(([d,v])=>{if(d>=1&&d<=dim)daily[d]+=v*f})}
+  {const sl=salaryInfo(p);if(sl&&sl.everyday){const d=dayIdx(p,sl.date);if(d>=1&&d<=dim)daily[d]+=sl.everyday}}
   for(let d=1;d<=dim;d++){plan[d]=plan[d-1]+rest+bills.filter(b=>b.idx===d).reduce((a,b)=>a+b.amount,0);act[d]=act[d-1]+daily[d]}
   const diff=act[upto]-plan[upto];const note=$("paceNote");note.className="pill "+(diff>0?(diff>bt*.05?"bad":"warn"):"ok");note.textContent=(diff>0?t("{x} over plan",{x:fmt(diff)}):t("{x} under plan",{x:fmt(-diff)}))+(curM?" "+t("today"):"");
   const W=boxW(box),H=190,pl2=40,pr=10,pt=10,pb=22;const max=Math.max(plan[dim],act[upto])*1.06||1;
@@ -488,7 +490,7 @@ function renderTrend(){
 
 /* ---------- health: is this period's spending on track? ---------- */
 function healthCalc(p){
-  const s=settings(),B=everydayBudget(s),tt=totalsP(p),bo=billCover(p),S=tt.everyday+bo.uncovered,dim=p.days;
+  const s=settings(),B=everydayBudget(s),tt=totalsP(p),bo=billCover(p),sal=salaryInfo(p),salE=sal?sal.everyday:0,S=tt.everyday+bo.uncovered+salE,dim=p.days;
   const curM=isCurP(p),future=isFutureP(p);
   const bills=monthBills(p);const planned=bills.reduce((a,b)=>a+b.amount,0);
   const upcoming=curM?bills.filter(b=>!b.x.hit):[];const U=upcoming.reduce((a,b)=>a+b.amount,0);
@@ -496,8 +498,8 @@ function healthCalc(p){
   const tI=todayIso();const today=curM?dayIdx(p,tI):dim,daysLeft=curM?dim-today+1:0;
   const normal=Math.max(0,B-planned)/dim;
   let plan=0;for(let d=1;d<=today;d++)plan+=normal+bills.filter(b=>b.idx===d).reduce((a,b)=>a+b.amount,0);
-  const spentToday=curM?pItems(p).filter(i=>i.date===tI).reduce((a,i)=>a+everydayCzk(i),0)+(bo.total?(bo.byIdx[dayIdx(p,tI)]||0)*bo.uncovered/bo.total:0):0;
-  const o={B,S,U,upcoming,planned,paid,dim,today,daysLeft,normal,plan,spentToday,oneoff:tt.oneoff,pot:tt.pot,billcat:tt.billcat,billOver:bo,mode:!B?"nobudget":future?"future":curM?"current":"past"};
+  const spentToday=curM?pItems(p).filter(i=>i.date===tI).reduce((a,i)=>a+everydayCzk(i),0)+(bo.total?(bo.byIdx[dayIdx(p,tI)]||0)*bo.uncovered/bo.total:0)+(salE&&sal.date===tI?salE:0):0;
+  const o={B,S,U,upcoming,planned,paid,dim,today,daysLeft,normal,plan,spentToday,oneoff:tt.oneoff,pot:tt.pot,billcat:tt.billcat,billOver:bo,salary:sal,mode:!B?"nobudget":future?"future":curM?"current":"past"};
   if(o.mode==="current"){o.left=B-S-U;o.perDay=o.left/daysLeft;o.r=o.left<0?0:(normal>0?o.perDay/normal:1);
     const everyday=Math.max(0,S-paid),rate=everyday/Math.max(1,today);o.rate=rate;o.projected=S+rate*(dim-today)+U;o.forecastOk=today>=3}
   else if(o.mode==="past"){o.left=B-S;o.r=S<=B?1.15:Math.max(0,1-(S-B)/B*3)}else o.r=null;
@@ -552,7 +554,7 @@ function renderHealth(){
     if(o.spentToday)cmp.appendChild(el("span","amt muted","· "+t("spent today {x}",{x:fmt(o.spentToday)})));
   }
   const dl=$("hSum");dl.replaceChildren();const row=(op,label,note,val,tot)=>{const dt=el("dt","",op),dd=el("dd",tot?"tot":"",label);if(note)dd.appendChild(el("span","note",note));dl.append(dt,dd,el("dd","v amt"+(tot?" tot":""),val))};
-  const oneNote=[o.oneoff?t("Leaves out {x} of one-off costs",{x:fmt(o.oneoff)}):"",o.pot?t("Leaves out {x} spent from your own pots",{x:fmt(o.pot)}):"",o.billOver.uncovered?t("Includes {x} paid over budget on {l}",{x:fmt(o.billOver.uncovered),l:o.billOver.cats.map(c=>c.c).join(", ")}):"",o.billOver.covered?t("{x} over budget on bills is covered from {n}",{x:fmt(o.billOver.covered),n:coverName(o.billOver.src)}):""].filter(Boolean).join(" · ")||null;
+  const oneNote=[o.oneoff?t("Leaves out {x} of one-off costs",{x:fmt(o.oneoff)}):"",o.pot?t("Leaves out {x} spent from your own pots",{x:fmt(o.pot)}):"",o.billOver.uncovered?t("Includes {x} paid over budget on {l}",{x:fmt(o.billOver.uncovered),l:o.billOver.cats.map(c=>c.c).join(", ")}):"",o.billOver.covered?t("{x} over budget on bills is covered from {n}",{x:fmt(o.billOver.covered),n:coverName(o.billOver.src)}):"",o.salary&&o.salary.everyday?t("Includes {x} less salary than usual",{x:fmt(o.salary.everyday)}):"",o.salary&&o.salary.covered?t("{x} less salary than usual is covered from {n}",{x:fmt(o.salary.covered),n:coverName(o.salary.src)}):""].filter(Boolean).join(" · ")||null;
   const bc=[...billCatSet()].filter(c=>EXP_CATS.includes(c));const budNote=bc.length?t("Everyday categories only. Bills ({l}) and own pots are kept separate.",{l:bc.join(", ")}):null;
   if(o.mode==="current"){row("",t("Spending budget for the period"),budNote,fmt(o.B));row("−",t("Spent so far"),oneNote,fmt(o.S));
     if(o.upcoming.length)row("−",t("Bills still to come"),o.upcoming.map(b=>b.x.r.name+" ("+dDay(b.x.dIso)+")").join(", "),fmt(o.U));
@@ -945,7 +947,7 @@ function fillSettings(){
   // import
   const im=$("setImport");im.replaceChildren(...IMPORT_METHODS.map(([v,n])=>{const o=el("option","",n==="Another bank (CSV file)"||n==="Screenshots and typing only"?t(n):n);o.value=v;return o}));im.value=(st.importPref||{}).method||"csv";$("importHow").textContent=importHowTo(im.value);
   $("setOwn").value=(st.ownAccounts||[]).join("\n");$("mapsInfo").textContent=Object.keys(st.csvMaps||{}).length?t("{n} saved column matches.",{n:Object.keys(st.csvMaps).length}):t("No saved column matches.");
-  fillCover();fillDisplay();renderPay();renderPayFile();
+  fillCover();fillSalarySet();fillDisplay();renderPay();renderPayFile();
   // child tracker
   const cc=(st.features||{}).child||{};$("kOn").checked=!!cc.on;$("kName").value=cc.name||"";$("kChild").value=cc.child||"";$("kOther").value=cc.other||"";
   const ks=$("kShare");ks.replaceChildren(...Array.from({length:21},(_,n)=>{const o=el("option","",t("{o} pays {p} %",{o:cc.other||t("The other parent"),p:n*5}));o.value=String(n*5);return o}));ks.value=String(cc.share!=null?cc.share:50);
@@ -1294,6 +1296,7 @@ $("shotSave").addEventListener("click",async()=>{if(!key)return;
 });
 function findShotTwin(i){let best=null,bs=1e9;for(const {k,i:x} of allItems()){if(x.type!==i.type||x.id===i.id)continue;
   if(x.src==="shot"){if(Math.abs((Number(x.czk)||0)-i.czk)<0.01&&Math.abs(dOf(x.date)-dOf(i.date))<=3*DAY)return {k,it:x};continue}
+  if(x.salary&&i.type==="income"&&i.src!=="hand"){if(Math.abs((+x.czk||0)-(+i.czk||0))<=Math.max(2,(+x.czk||0)*.02)&&Math.abs(dOf(x.paidOn||x.date)-dOf(i.date))<=5*DAY)return {k,it:x};continue}
   if(x.src!=="pay")continue;const sc=payTwinScore(x,i);if(sc!=null&&sc<bs){bs=sc;best={k,it:x}}}return best}
 
 /* ---------- end-to-end encrypted sync through a private GitHub repository ----------
@@ -2108,7 +2111,7 @@ function updatePlan(){
 }
 
 /* ---------- display switches ---------- */
-const DISPLAY=[["Health",[["face","Health face and dial"],["face3d","3D face"],["streak","Streak"],["howcalc","How it's worked out"]]],
+const DISPLAY=[["Health",[["face","Health face and dial"],["face3d","3D face"],["streak","Streak"],["salary","Salary check-in"],["howcalc","How it's worked out"]]],
   ["Overview",[["flow","Where the money went"],["pace","Spending pace"],["schedule","Schedule"],["bars","Budget vs actual"],["donut","Where it went"],["heat","Day by day"],["places","Top places"],["trend","Last six months"]]],
   ["Savings",[["jars","Pots & goals"],["net","Savings over time"],["transfers","Money transferred in"]]],
   ["Child expenses",[["kidchart","Last six months"]]],
@@ -2129,6 +2132,116 @@ function fillDisplay(){
   DISPLAY.forEach(([grp,list])=>{if(grp==="Child expenses"&&!childCfg())return;box.appendChild(el("h3","",t(grp)));
     list.forEach(([k,label])=>{const l=chk(t(label),showOn(k));l.input.addEventListener("change",async()=>{const st=ensureSettings();st.display=st.display||{};if(l.input.checked)delete st.display[k];else st.display[k]=false;applyDisplay();await persist()});box.appendChild(l)})});
 }
+
+/* ---------- salary check-in ---------- */
+// The salary is the largest monthly recurring income item. "Salary arrived" records what actually came in.
+// settings.salaryCover = {src} : where a shortfall comes from by default ("" = everyday spending, or an account / savings category)
+// settings.salaryLog[periodStart] = {src} : the choice made for that period
+// salary entries carry salary:true; one that arrives up to 4 days before payday counts for the new period (dated on payday, paidOn = real date)
+function salaryRec(){return recList().filter(r=>typeOfCat(r.cat)==="income"&&(r.freq||"monthly")==="monthly"&&!r.end).sort((a,b)=>recCzk(b)-recCzk(a))[0]||null}
+function salaryEntries(p,r){r=r||salaryRec();if(!r)return [];return pItems(p).filter(i=>i.type==="income"&&i.src!=="auto"&&(i.salary||i.rec===r.id||(i.cat===r.cat&&recMatch(r,i.date,[i]))))}
+function salaryInfo(p){
+  const r=salaryRec();if(!r)return null;const exp=Math.round(recCzk(r)*100)/100;const ents=salaryEntries(p,r);
+  if(!ents.length)return {r,exp,actual:null,short:0,extra:0,everyday:0,covered:0,src:"",date:null};
+  const actual=Math.round(ents.reduce((a,i)=>a+(+i.czk||0),0)*100)/100;let short=Math.max(0,exp-actual);if(short<1)short=0;short=Math.round(short*100)/100;
+  const st=docs.settings||{};const log=(st.salaryLog||{})[p.s];let src=log&&log.src!=null?log.src:((st.salaryCover||{}).src||"");if(src&&!coverSrcs().some(x=>x[0]===src))src="";
+  const date=ents.map(i=>i.date).sort().pop();
+  return {r,exp,actual,short,extra:Math.max(0,Math.round((actual-exp)*100)/100),everyday:src?0:short,covered:src?short:0,src,date,ents};
+}
+// the period a salary paid on dIso belongs to: paid up to 4 days before payday counts for the new period
+function salaryPeriodFor(dIso){const d=dOf(dIso);const pd=periodOfDate(d);let p=period(pd.y,pd.m);const nx=shiftP(p,1);if((dOf(nx.s)-d)/DAY<=4&&(dOf(nx.s)-d)>0)p=nx;return p}
+function salaryDue(){
+  const r=salaryRec();if(!r||!docs.settings)return null;const tI=todayIso();const p=salaryPeriodFor(tI);if(!isCurP(p)&&!isFutureP(p))return null;
+  const inf=salaryInfo(p);if(!inf||inf.actual!=null)return null;const first=occurrences({...r,start:""},p.start,p.end)[0]||p.s;
+  if((dOf(first)-dOf(tI))/DAY>4)return null;return {p,first,inf}}
+function renderSalary(){
+  const panel=$("salaryPanel");if(!panel)return;const due=salaryDue();if(!due){panel.hidden=true;return}
+  panel.hidden=false;$("salaryText").textContent=t("Usually about {x} around {d}. Tap when it's in your account and enter what actually came in.",{x:fmt(due.inf.exp),d:dShort(due.first)});
+}
+function openSalary(){
+  const r=salaryRec();if(!r){toast(t("Add your salary as a recurring income item first (Settings → Pay, bills & reminders)."));showTab("settings");return}
+  const st=ensureSettings();const tI=todayIso();
+  const amt=el("input","amt");amt.inputMode="decimal";const date=el("input");date.type="date";date.value=tI;date.max=tI;
+  const srcSel=selOf(coverSrcs(),(st.salaryCover||{}).src||"");const remember=chk(t("Use this account every time"),true);
+  const diffBox=el("div","salary-diff");const info=el("p","small muted");
+  let existing=null,bank=null,p=null;
+  const refresh=()=>{p=salaryPeriodFor(date.value||tI);const inf=salaryInfo(p);existing=(inf&&inf.ents||[]).filter(i=>i.salary);bank=(inf&&inf.ents||[]).filter(i=>!i.salary);
+    // a bank export already shows the salary: it's the real figure, so only the shortfall choice is left
+    amt.disabled=!!bank.length;if(bank.length)amt.value=String(Math.round(bank.reduce((a,i)=>a+(+i.czk||0),0)*100)/100);
+    else if(existing.length&&!amt.dataset.touched)amt.value=String(existing.reduce((a,i)=>a+(+i.amount||0),0));if(!amt.value)amt.value=String(Math.round(inf.exp));
+    const log=(st.salaryLog||{})[p.s];if(log&&log.src!=null&&!srcSel.dataset.touched)srcSel.value=coverSrcs().some(x=>x[0]===log.src)?log.src:"";
+    info.textContent=t("Counts for the period {p}. Expected {x}.",{p:pLabel(p),x:fmt(inf.exp)})+(bank.length?" "+t("Your bank export already shows {x} on {d}.",{x:fmt(+amt.value||0),d:dShort(bank[0].date)}):existing.length?" "+t("This replaces the {x} you entered on {d}.",{x:fmt(existing.reduce((a,i)=>a+(+i.czk||0),0)),d:dShort(existing[0].paidOn||existing[0].date)}):"");
+    const v=parseNum(amt.value)||0,d=Math.round((inf.exp-v)*100)/100;diffBox.replaceChildren();
+    if(d>=1){diffBox.append(el("p","small",t("That's {x} less than usual.",{x:fmt(d)})),fld(t("Take the difference from"),srcSel),remember,
+      el("p","fine",t("Choose \"Nobody\" and it comes out of your everyday spending this period. The app keeps track only; it doesn't move money.")))}
+    else if(d<=-1)diffBox.appendChild(el("p","small",t("That's {x} more than usual. It isn't added to your daily allowance; give it a job on the Savings tab or in a pot.",{x:fmt(-d)})));
+    else diffBox.appendChild(el("p","small muted",t("Same as usual.")))};
+  amt.addEventListener("input",()=>{amt.dataset.touched=1;refresh()});date.addEventListener("change",refresh);srcSel.addEventListener("change",()=>{srcSel.dataset.touched=1});
+  const save=el("button","primary",t("Save salary"));save.type="button";const hint=el("p","hint err");
+  save.addEventListener("click",async()=>{const v=parseNum(amt.value);if(!(v>0)){hint.textContent=t("Enter the amount that came in.");return}const dI=date.value||tI;if(dI>tI){hint.textContent=t("That date is in the future.");return}
+    p=salaryPeriodFor(dI);const inf=salaryInfo(p);if(bank&&bank.length){const d0=Math.round((inf.exp-v)*100)/100;st.salaryLog=st.salaryLog||{};
+      if(d0>=1){st.salaryLog[p.s]={src:srcSel.value};if(remember.input.checked)st.salaryCover={src:srcSel.value}}await persist();closeSheet();render();
+      toast(d0>=1?(srcSel.value?t("{x} less than usual, covered from {n}. Remember to move it in your bank.",{x:fmt(d0),n:coverName(srcSel.value)}):t("{x} less than usual comes out of everyday spending.",{x:fmt(d0)})):t("Salary saved."));return}
+    // remove what this replaces: earlier check-ins for the period and the automatic salary entry
+    monthKeys().forEach(k=>{docs[k].items=items(k).filter(i=>!(i.salary&&salaryPeriodFor(i.paidOn||i.date).s===p.s))});
+    const skip=docs.autoSkip||(docs.autoSkip={});occurrences({...r,start:""},p.start,p.end).forEach(dIso=>{const id=autoId(r,dIso);skip[id]=1;monthKeys().forEach(k=>{docs[k].items=items(k).filter(i=>i.id!==id)})});
+    const when=dI<p.s?p.s:dI;const it={id:uid("sal"),type:"income",cat:r.cat,amount:v,cur:baseCur(),czk:Math.round(v*100)/100,note:r.name,date:when,time:"",ts:Date.now(),src:"hand",salary:true,rec:r.id};
+    if(when!==dI)it.paidOn=dI;const k="m-"+when.slice(0,7);(docs[k]=docs[k]||{items:[]}).items=items(k).concat(it);
+    const d=Math.round((inf.exp-v)*100)/100;st.salaryLog=st.salaryLog||{};
+    if(d>=1){st.salaryLog[p.s]={src:srcSel.value};if(remember.input.checked)st.salaryCover={src:srcSel.value}}else delete st.salaryLog[p.s];
+    await persist();closeSheet();render();
+    toast(d>=1?(srcSel.value?t("Salary saved. {x} less than usual, covered from {n}. Remember to move it in your bank.",{x:fmt(d),n:coverName(srcSel.value)}):t("Salary saved. {x} less than usual comes out of everyday spending.",{x:fmt(d)})):t("Salary saved."))});
+  openSheet(t("Salary arrived"),[fld(t("Amount that came in ({c})",{c:baseCur()}),amt),fld(t("Date it arrived"),date),info,diffBox,save,hint]);refresh();
+}
+function fillSalarySet(){const s=$("salCoverSrc");if(!s)return;const st=docs.settings||{};s.replaceChildren(...coverSrcs().map(([v,tx])=>{const o=el("option","",tx);o.value=v;return o}));
+  s.value=coverSrcs().some(x=>x[0]===(st.salaryCover||{}).src)?(st.salaryCover||{}).src||"":"";
+  const r=salaryRec(),inf=r?salaryInfo(curP()):null;$("salInfo").textContent=!r?t("Add your salary as a recurring income item to use this."):
+    inf.actual==null?t("Expected this period: {x}. Not entered yet.",{x:fmt(inf.exp)}):t("This period: {a} came in (expected {b}).",{a:fmt(inf.actual),b:fmt(inf.exp)})+(inf.short?" "+(inf.src?t("{x} less, covered from {n}.",{x:fmt(inf.short),n:coverName(inf.src)}):t("{x} less, taken from everyday spending.",{x:fmt(inf.short)})):"")}
+$("salCoverSrc").addEventListener("change",async()=>{const st=ensureSettings();st.salaryCover={src:$("salCoverSrc").value};await persist();render();fillSalarySet()});
+$("salaryBtn").addEventListener("click",openSalary);$("salaryBtn2").addEventListener("click",openSalary);
+
+/* ---------- back on track: no-spend days needed ---------- */
+// on track = what's left covers the usual daily allowance for every day left. With no spending, each day that passes needs one allowance less.
+function backOnTrack(o){if(!o||o.mode!=="current"||!(o.normal>0))return null;const need=o.normal*o.daysLeft;if(o.left>=need-0.5)return {k:0};
+  if(o.left<=0)return {k:null,over:-o.left};return {k:Math.ceil(o.daysLeft-o.left/o.normal-1e-9)}}
+
+/* ---------- a money quote for each day on the lock screen ---------- */
+const QUOTES=[
+  ["Beware of little expenses; a small leak will sink a great ship.","Dejte si pozor na malé výdaje; i malá netěsnost potopí velkou loď.","Benjamin Franklin"],
+  ["Wealth consists not in having great possessions, but in having few wants.","Bohatství nespočívá ve velkém majetku, ale v malých potřebách.","Epiktétos"],
+  ["It is not the man who has too little, but the man who craves more, that is poor.","Chudý není ten, kdo má málo, ale ten, kdo touží po víc.","Seneca"],
+  ["A penny saved is a penny earned.","Ušetřená koruna je vydělaná koruna.","Proverb|Přísloví"],
+  ["Who saves, has enough for three.","Kdo šetří, má za tři.","Czech proverb|České přísloví"],
+  ["No work, no cakes.","Bez práce nejsou koláče.","Czech proverb|České přísloví"],
+  ["Better a sparrow in the hand than a pigeon on the roof.","Lepší vrabec v hrsti než holub na střeše.","Czech proverb|České přísloví"],
+  ["Grain by grain, a loaf; stone by stone, a palace.","Zrnko k zrnku – pecen chleba, kámen ke kameni – palác.","Proverb|Přísloví"],
+  ["Never spend your money before you have it.","Nikdy neutrácejte peníze dřív, než je máte.","Thomas Jefferson"],
+  ["He who buys what he does not need steals from himself.","Kdo kupuje, co nepotřebuje, okrádá sám sebe.","Swedish proverb|Švédské přísloví"],
+  ["Money is a good servant but a bad master.","Peníze jsou dobrý sluha, ale špatný pán.","Francis Bacon"],
+  ["Frugality includes all the other virtues.","Skromnost v sobě zahrnuje všechny ostatní ctnosti.","Cicero"],
+  ["Annual income twenty pounds, annual expenditure nineteen nineteen and six: result happiness.","Roční příjem dvacet liber, roční výdaje devatenáct liber devatenáct a šest: výsledek štěstí.","Charles Dickens"],
+  ["That man is richest whose pleasures are the cheapest.","Nejbohatší je ten, jehož radosti jsou nejlevnější.","Henry David Thoreau"],
+  ["If you would be wealthy, think of saving as well as getting.","Chcete-li být bohatí, myslete na šetření stejně jako na vydělávání.","Benjamin Franklin"],
+  ["Little by little, a little becomes a lot.","Pomalu, ale jistě se z mála stane hodně.","Tanzanian proverb|Tanzanské přísloví"],
+  ["Price is what you pay. Value is what you get.","Cena je to, co zaplatíte. Hodnota je to, co dostanete.","Warren Buffett"],
+  ["Do not save what is left after spending; spend what is left after saving.","Nešetřete to, co zbude po utrácení; utrácejte to, co zbude po spoření.","Warren Buffett"],
+  ["Money often costs too much.","Peníze často stojí příliš mnoho.","Ralph Waldo Emerson"],
+  ["Wealth is like sea water: the more we drink, the thirstier we become.","Bohatství je jako mořská voda: čím víc pijeme, tím větší máme žízeň.","Arthur Schopenhauer"],
+  ["Nothing is enough for the man to whom enough is too little.","Nic nestačí tomu, komu je dost málo.","Epikúros"],
+  ["Don't count your chickens before they are hatched.","Neříkej hop, dokud nepřeskočíš.","Aesop|Ezop"],
+  ["Industry, perseverance and frugality make fortune yield.","Píle, vytrvalost a šetrnost přinutí štěstí, aby se podvolilo.","Benjamin Franklin"],
+  ["The habit of saving is itself an education.","Zvyk šetřit je sám o sobě vzděláním.","T. T. Munger"],
+  ["An investment in knowledge pays the best interest.","Investice do vědění nese nejlepší úrok.","Benjamin Franklin"],
+  ["Time is money.","Čas jsou peníze.","Benjamin Franklin"],
+  ["The safest way to double your money is to fold it over and put it in your pocket.","Nejbezpečnější způsob, jak peníze zdvojnásobit, je přeložit je napůl a dát do kapsy.","Kin Hubbard"],
+  ["Riches are for spending, and spending for honour and good actions.","Bohatství je k utrácení, a utrácení pro čest a dobré skutky.","Francis Bacon"],
+  ["Every coin has two sides.","Každá mince má dvě strany.","Proverb|Přísloví"],
+  ["Cut your coat according to your cloth.","Natahuj se jen tak daleko, kam ti peřina stačí.","Proverb|Přísloví"],
+  ["A fool and his money are soon parted.","Blázen se se svými penězi brzy rozloučí.","Proverb|Přísloví"]
+];
+function showQuote(){const q=$("lockQuote");if(!q)return;const d=new Date();const n=Math.floor((Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())-Date.UTC(2026,0,1))/DAY);
+  const x=QUOTES[((n%QUOTES.length)+QUOTES.length)%QUOTES.length];const who=x[2].split("|");
+  $("lockQuoteText").textContent="“"+(LANG==="cs"?x[1]:x[0])+"”";$("lockQuoteBy").textContent="— "+(LANG==="cs"&&who[1]?who[1]:who[0]);q.hidden=false}
 
 /* ---------- visual extras: money flow, jars, celebrations, streak ---------- */
 const reduceMotion=()=>matchMedia("(prefers-reduced-motion: reduce)").matches||document.body.classList.contains("noanim");
@@ -2232,6 +2345,9 @@ function renderStreak(){
     i.title=dShort(d.s)+(d.before?"":" · "+fmt(d.v));dots.appendChild(i)});
   panel.hidden=false;$("streakPill").textContent=streak+" "+pl(streak,"day");$("streakPill").className="pill "+(streak?"ok":"");
   $("streakText").textContent=streak?t("{n} {d} in a row within your usual {x} a day.",{n:streak,d:pl(streak,"day"),x:fmt(o.normal)})+(todayOk?" "+t("Today is on track so far."):""):t("No streak yet. Stay within {x} today to start one.",{x:fmt(o.normal)});
+  const bt=backOnTrack(o),bk=$("streakBack");if(bk){bk.hidden=!bt;if(bt){bk.className="streak-back "+(bt.k===0?"ok":bt.k==null?"bad":"warn");
+    bk.replaceChildren(el("b","",bt.k===0?t("On track"):bt.k==null?t("Over for this period"):t("{n} no-spend {d} to get back on track",{n:bt.k,d:pl(bt.k,"day")})),
+      el("span","",bt.k===0?t("You can spend your usual {x} a day and still finish on budget.",{x:fmt(o.normal)}):bt.k==null?t("Even with no more spending you'd finish {x} over. A fresh start comes on {d}.",{x:fmt(bt.over),d:dShort(shiftP(curP(),1).s)}):t("Spend nothing on everyday things for {n} {d}, including today, and you're back to your usual {x} a day.",{n:bt.k,d:pl(bt.k,"day"),x:fmt(o.normal)})))}}
 }
 
 /* ---------- 3D Health face: a lit sphere drawn with WebGL, no libraries ----------

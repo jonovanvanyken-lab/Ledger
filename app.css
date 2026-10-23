@@ -589,3 +589,12 @@ body.noanim *,body.noanim *::before{animation:none!important;transition:none!imp
 .rcp:first-child{border-top:0}.rcp .rl{font-size:12px;color:var(--muted)}
 .rcp code{font-family:var(--f-mono);font-size:12px;word-break:break-all;user-select:all;-webkit-user-select:all}
 .pay-steps{margin:0 0 6px;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+/* v15: daily quote, salary check-in, back on track */
+.lock-quote{margin:6px 0 0;padding:14px 16px;border-left:3px solid var(--accent,#6b8afd);background:color-mix(in srgb,var(--accent,#6b8afd) 8%,transparent);border-radius:10px}
+.lock-quote blockquote{margin:0;font-size:1.02rem;line-height:1.45;font-style:italic}
+.lock-quote figcaption{margin-top:6px;font-size:.85rem;color:var(--muted)}
+.salary-panel .btnrow,.salary-panel button{margin-top:8px}
+.salary-diff{display:flex;flex-direction:column;gap:8px}
+.streak-back{display:flex;flex-direction:column;gap:2px;margin:10px 0 0;padding:10px 12px;border-radius:10px;background:color-mix(in srgb,var(--muted) 10%,transparent)}
+.streak-back b{font-size:.98rem}.streak-back span{font-size:.88rem;color:var(--muted)}
+.streak-back.ok b{color:var(--ok,#3fb27f)}.streak-back.warn b{color:var(--warn,#e0a63a)}.streak-back.bad b{color:var(--bad,#e5636b)}
