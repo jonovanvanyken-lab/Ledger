@@ -999,7 +999,6 @@ window.KC_CS={
 "{x} less than usual comes out of everyday spending.": "O {x} méně než obvykle se odečte z běžných výdajů.",
 "Catch up": "Dohnat",
 "not this period": "v tomto období ne",
-"Kč Ledger · version 17": "Kč Ledger · verze 17",
 "Summary": "Přehled",
 "Categories": "Kategorie",
 "Calendar": "Kalendář",
@@ -1036,6 +1035,8 @@ window.KC_CS={
 "Choose where a bill's extra comes from when it's over budget.": "Zvolte, odkud se vezme rozdíl, když platba přesáhne rozpočet.",
 "Log in-store Apple Pay purchases automatically.": "Automaticky zaznamenávejte nákupy přes Apple Pay v obchodech.",
 "Keep your phone and computer in step, fully encrypted.": "Udržujte telefon a počítač v souladu, vše šifrovaně.",
-"Choose which charts and graphics to show.": "Zvolte, které grafy a obrázky se mají zobrazovat."
+"Choose which charts and graphics to show.": "Zvolte, které grafy a obrázky se mají zobrazovat.",
+"Connected to your existing inbox. Your Shortcut keeps working as it is.": "Připojeno k vaší stávající schránce. Zkratka funguje dál beze změn.",
+"Kč Ledger · version 18": "Kč Ledger · verze 18"
 };
 window.KC_PL={"item": {"en": ["item", "items"], "cs": ["položka", "položky", "položek"]}, "own account": {"en": ["own account", "own accounts"], "cs": ["vlastní účet", "vlastní účty", "vlastních účtů"]}, "day": {"en": ["day", "days"], "cs": ["den", "dny", "dní"]}, "payment": {"en": ["payment", "payments"], "cs": ["platba", "platby", "plateb"]}, "image": {"en": ["image", "images"], "cs": ["obrázek", "obrázky", "obrázků"]}, "entry": {"en": ["entry", "entries"], "cs": ["položka", "položky", "položek"]}, "transaction": {"en": ["transaction", "transactions"], "cs": ["transakce", "transakce", "transakcí"]}, "category": {"en": ["category", "categories"], "cs": ["kategorie", "kategorie", "kategorií"]}};

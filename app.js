@@ -3,7 +3,7 @@
    A random data key encrypts the ledger and images. That key is stored wrapped by your passcode
    (PBKDF2-SHA256, 600k rounds → AES-GCM) and, if you turn it on, by a Face ID passkey (WebAuthn PRF → HKDF → AES-GCM). */
 "use strict";
-const ITER=600000,DAY=864e5,APP_VERSION=17;
+const ITER=600000,DAY=864e5,APP_VERSION=18;
 const $=id=>document.getElementById(id);
 const te=new TextEncoder(),td=new TextDecoder();
 const b64=buf=>{let s="";const b=buf instanceof Uint8Array?buf:new Uint8Array(buf);for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)};
@@ -1904,9 +1904,12 @@ async function paySetup(){
   try{const info=await gh(cfg,"GET","");if(!info){const e=new Error("nf");e.status=404;throw e}
     if(!info.private){h.className="hint err";h.textContent=t("That repository is public. Make it private on GitHub first.");return}
     if(info.has_issues===false){h.className="hint err";h.textContent=t("Issues are turned off for that repository. Turn them on under its Settings → General → Features, then try again.");return}
-    const iss=await gh(cfg,"POST","/issues",{title:"Kč Ledger · Apple Pay inbox",body:"Kč Ledger reads the comments here, adds them to your encrypted ledger and deletes them. Please don't close or delete this issue."});
+    // reuse an inbox made earlier (on another device or before a restore), so the Shortcut keeps working
+    let iss=null;try{const open=(await gh(cfg,"GET","/issues?state=open&per_page=100"))||[];iss=open.find(x=>x&&!x.pull_request&&x.title==="Kč Ledger · Apple Pay inbox")||null}catch(_){}
+    const reused=!!iss;
+    if(!iss)iss=await gh(cfg,"POST","/issues",{title:"Kč Ledger · Apple Pay inbox",body:"Kč Ledger reads the comments here, adds them to your encrypted ledger and deletes them. Please don't close or delete this issue."});
     docs._device=docs._device||{};docs._device.payInbox={repo,token,issue:iss.number,done:[],last:0,added:0};await persist();$("payToken").value="";h.textContent="";renderPay();
-    toast(t("Inbox ready. Now add the automation in Shortcuts on your iPhone."))}
+    toast(reused?t("Connected to your existing inbox. Your Shortcut keeps working as it is."):t("Inbox ready. Now add the automation in Shortcuts on your iPhone."));if(reused)setTimeout(()=>payCheck(false),300)}
   catch(e){h.className="hint err";h.textContent=e.status===401?t("GitHub rejected the access token. It may have expired: make a new one and connect again."):(e.status===403||e.status===404||e.status===410)?t("The token can't reach that repository. Give it Issues: Read and write for this repository."):t("Couldn't reach GitHub. It will try again when you're online.")}
 }
 function payCopy(text){(navigator.clipboard?navigator.clipboard.writeText(text):Promise.reject()).then(()=>toast(t("Copied"))).catch(()=>toast(t("Couldn't copy. Select the text instead.")))}
