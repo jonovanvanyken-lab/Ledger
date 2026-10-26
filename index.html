@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="app.css?v=16">
+<link rel="stylesheet" href="app.css?v=17">
 <title>Kč Ledger</title>
 </head>
 <body>
@@ -39,7 +39,7 @@
       <p class="hint" id="lockHint"></p>
     </form>
     <figure class="lock-quote" id="lockQuote" hidden><blockquote id="lockQuoteText"></blockquote><figcaption id="lockQuoteBy"></figcaption></figure>
-    <p class="fine" id="lockVer">Kč Ledger · version 16</p>
+    <p class="fine" id="lockVer">Kč Ledger · version 17</p>
     <p class="fine" id="lockFine" hidden>Your entries are encrypted on this device. Nobody, including the app's host, can read them. There is no passcode reset: if you forget it, only a backup can bring your data back.</p>
   </div>
 </main>
@@ -71,19 +71,21 @@
   <!-- HEALTH -->
   <section class="tab" id="tab-health">
     <p class="h-hello" id="hHello" hidden></p>
+    <div class="panel hero-card">
     <div class="health-hero" id="hHero" data-show="face">
       <div class="health-dial" id="hDial"></div>
       <div class="health-status">
         <h2 id="hStatus">—</h2>
         <p id="hSub"></p>
       </div>
-      <div class="health-key" id="hKey"><span><i class="kr"></i>Budget used</span><span><i class="kt"></i>Where you'd expect to be today</span></div>
+      <div class="health-key" id="hKey" hidden></div>
     </div>
-    <div class="panel health-allow">
+    <div class="health-allow">
       <span class="label" id="hAllowLabel">You can spend</span>
       <span class="hbig amt" id="hPerDay">—</span>
       <span class="hsub" id="hPerDaySub"></span>
       <div class="hcompare" id="hCompare"></div>
+    </div>
     </div>
     <div class="panel salary-panel" id="salaryPanel" hidden data-show="salary">
       <div class="panel-head"><h2>Has your salary arrived?</h2></div>
@@ -96,81 +98,83 @@
       <p class="small muted" id="streakText"></p>
       <p class="streak-back" id="streakBack" hidden></p>
     </div>
-    <div class="panel" data-show="howcalc">
-      <h2>How it's worked out</h2>
+    <details class="panel fold" data-show="howcalc">
+      <summary><h2>How it's worked out</h2></summary>
       <dl class="hsum" id="hSum"></dl>
       <p class="hforecast" id="hForecast"></p>
-    </div>
+    </details>
     <div class="panel">
-      <h2>Other checks</h2>
+      <h2>Checks</h2>
       <ul class="hchecks" id="hChecks"></ul>
     </div>
-    <p class="fine hfine">The face follows your everyday spending against your budget. Bills are counted on the days they're due, and one-off costs are left out.</p>
   </section>
 
   <!-- OVERVIEW -->
-  <section class="tab" id="tab-overview" hidden>
-    <div id="banners" class="banners"></div>
-    <div id="recap"></div>
-    <div class="summary">
+  <section class="tab" id="tab-overview" hidden data-sub="summary">
+    <div class="subtabs" role="tablist" id="ovTabs">
+      <button type="button" role="tab" data-sub="summary" aria-selected="true">Summary</button>
+      <button type="button" role="tab" data-sub="cats" aria-selected="false">Categories</button>
+      <button type="button" role="tab" data-sub="cal" aria-selected="false">Calendar</button>
+      <button type="button" role="tab" data-sub="trends" aria-selected="false">Trends</button>
+    </div>
+    <div id="banners" class="banners" data-sub="summary"></div>
+    <div id="recap" data-sub="summary"></div>
+    <div class="summary" data-sub="summary">
       <div class="kpi"><span class="label">Spent</span><span class="big amt" id="kSpent">—</span><span class="sub"><span class="amt" id="kSpentOf">—</span> <span class="pill" id="kSpentPill">—</span></span></div>
       <div class="kpi"><span class="label">Left to spend</span><span class="big amt" id="kLeft">—</span><span class="sub amt" id="kLeftSub">—</span></div>
       <div class="kpi"><span class="label">Saved &amp; invested</span><span class="big amt" id="kSaved">—</span><span class="sub amt" id="kSavedOf">—</span></div>
       <div class="kpi"><span class="label">Income</span><span class="big amt" id="kIncome">—</span><span class="sub amt" id="kIncomeSub">—</span></div>
     </div>
-    <button class="oneoff-strip" id="oneoffStrip" hidden></button>
+    <button class="oneoff-strip" id="oneoffStrip" hidden data-sub="summary"></button>
 
-    <div class="panel" data-show="flow" data-auto>
+    <div class="panel" data-show="flow" data-auto data-sub="summary">
       <div class="panel-head"><h2>Where the money went</h2><span class="small muted" id="flowNote"></span></div>
       <div id="flow" class="chart flow"></div>
     </div>
 
-    <div class="panel" data-show="pace" data-auto>
+    <div class="panel" data-show="pace" data-auto data-sub="summary">
       <div class="panel-head"><h2>Spending pace</h2><span class="pill" id="paceNote"></span></div>
       <div id="pace" class="chart"></div>
       <div class="legend"><span><i class="sw sw-sp"></i>Spent so far</span><span><i class="sw sw-plan"></i>Plan, with bills on their days</span></div>
     </div>
 
-    <div class="panel" data-show="schedule" data-auto>
+
+    <div class="panel" data-show="bars" data-auto data-sub="cats">
+      <div class="panel-head"><h2>Budget vs actual</h2><span class="small muted" id="barsNote"></span></div>
+      <div class="bars" id="bars"></div>
+    </div>
+
+
+    <div class="panel" data-show="heat" data-auto="spend" data-sub="cal">
+      <div class="panel-head"><h2>Day by day</h2></div>
+      <div id="heat" class="heat"></div>
+      <div id="dayList" class="day-list"></div>
+    </div>
+    <div class="panel" data-show="schedule" data-auto data-sub="cal">
       <div class="panel-head"><h2>Schedule</h2><button class="link" id="billsEdit">Edit</button></div>
       <ul class="bills" id="bills"></ul>
     </div>
 
-    <div class="panel" data-show="bars" data-auto>
-      <div class="panel-head"><h2>Budget vs actual</h2><span class="small muted">Tap a category to see its entries</span></div>
-      <div class="bars" id="bars"></div>
-    </div>
-
-    <div class="panel" data-show="donut" data-auto>
-      <h2>Where it went</h2>
-      <div class="donut-wrap"><div id="donut" class="donut"></div><ul id="donutLegend" class="donut-legend"></ul></div>
-    </div>
-
-    <div class="panel" data-show="heat" data-auto="spend">
-      <div class="panel-head"><h2>Day by day</h2><span class="small muted">Tap a day</span></div>
-      <div id="heat" class="heat"></div>
-      <div id="dayList" class="day-list"></div>
-    </div>
-
-    <div class="panel" data-show="places" data-auto>
-      <div class="panel-head"><h2>Top places</h2><span class="small muted">Last 3 months</span></div>
-      <ol id="merchants" class="merchants"></ol>
-    </div>
-
-    <div class="panel" data-show="trend" data-auto>
+    <div class="panel" data-show="trend" data-auto data-sub="trends">
       <div class="panel-head"><h2>Last six months</h2>
         <div class="legend"><span><i class="sw sw-sp"></i>Spent</span><span><i class="sw sw-one"></i>One-off</span><span><i class="sw sw-sv"></i>Saved</span></div>
       </div>
       <div id="trend" class="chart"></div>
     </div>
-    <button class="icon-btn wide" id="yearBtn" type="button">Year in review</button>
+    <div class="panel" data-show="places" data-auto data-sub="trends">
+      <div class="panel-head"><h2>Top places</h2><span class="small muted">Last 3 months</span></div>
+      <ol id="merchants" class="merchants"></ol>
+    </div>
+
+    <button class="icon-btn wide" id="yearBtn" type="button" data-sub="trends">Year in review</button>
   </section>
 
   <!-- ENTRIES -->
   <section class="tab" id="tab-entries" hidden>
     <div class="quick">
-      <button class="quick-btn" id="shotBtn"><span class="qi" aria-hidden="true">▣</span><span><b>Read a screenshot</b><small>Banking app or a receipt</small></span></button>
-      <button class="quick-btn" id="importBtn2"><span class="qi" aria-hidden="true">≡</span><span><b>Import a bank file</b><small>Bank CSV, Revolut, Wise or your Apple Pay file</small></span></button>
+      <button class="quick-btn" id="addBtn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Add</span></button>
+      <button class="quick-btn" id="shotBtn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="14" rx="3"/><circle cx="12" cy="13" r="3.5"/><path d="M8 6l1.5-2h5L16 6"/></svg><span>Screenshot</span></button>
+      <button class="quick-btn" id="importBtn2" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span>Import</span></button>
     </div>
     <input type="file" id="shotFile" accept="image/*" hidden>
     <input type="file" id="attachFile" accept="image/*" hidden>
@@ -190,11 +194,11 @@
           <details id="shotRawWrap" class="sub-sec" hidden><summary>Text it read</summary><pre id="shotRaw" class="raw"></pre></details>
         </div>
       </div>
-      <p class="fine">The screenshot is read on this device. It isn't sent anywhere.</p>
+      <details class="more"><summary>About this</summary><p class="fine">The screenshot is read on this device. It isn't sent anywhere.</p></details>
     </div>
 
     <details class="panel add-panel" id="addPanel">
-      <summary><h2>Add an entry</h2><span class="plus" aria-hidden="true">+</span></summary>
+      <summary><h2>Add an entry</h2><span class="plus" aria-hidden="true">×</span></summary>
       <div class="seg" role="group" aria-label="Entry type">
         <button type="button" data-type="expense" aria-pressed="true">Spent</button>
         <button type="button" data-type="saving" aria-pressed="false">Saved</button>
@@ -236,22 +240,19 @@
 
   <!-- SAVINGS -->
   <section class="tab" id="tab-savings" hidden>
-    <div class="panel" id="jarsPanel" hidden data-show="jars">
-      <h2>Pots &amp; goals</h2>
-      <div id="jars" class="jars"></div>
-    </div>
     <div class="panel">
-      <div class="panel-head"><h2>Goals</h2><button class="link" id="goalAdd">+ New goal</button></div>
+      <div class="panel-head"><h2>Pots &amp; goals</h2><button class="link" id="goalAdd">+ New goal</button></div>
+      <div id="jarsPanel" hidden data-show="jars"><div id="jars" class="jars"></div></div>
       <div id="goals" class="goals"></div>
     </div>
     <div class="panel">
       <div class="panel-head"><h2>Owed &amp; owing</h2><button class="link" id="debtAdd" type="button">+ Add</button></div>
-      <div class="inv-kpis">
+      <div class="inv-kpis" id="debtKpis">
         <div><span class="label">Owed to you</span><span class="big amt pos" id="debtIn">—</span></div>
         <div><span class="label">You owe</span><span class="big amt" id="debtOut">—</span></div>
       </div>
       <div id="debtList" class="debts"></div>
-      <p class="fine">Just for keeping track. It doesn't affect your budget or the Health face.</p>
+      <details class="more"><summary>About this</summary><p class="fine">Just for keeping track. It doesn't affect your budget or the Health face.</p></details>
     </div>
     <div class="panel" id="investPanel" hidden>
       <div class="panel-head"><h2>Investing</h2><span class="small muted" id="invNote"></span></div>
@@ -264,21 +265,21 @@
       <div class="legend"><span><i class="sw sw-sv"></i>Invested</span><span><i class="sw sw-plan"></i>Monthly target</span></div>
     </div>
     <div class="panel">
-      <div class="panel-head"><h2>Accounts &amp; balances</h2></div>
+      <div class="panel-head"><h2>Accounts &amp; balances</h2><button class="link" id="acctAddBtn" type="button">+ Add account</button></div>
       <div class="total"><span class="label">Total across accounts</span><span class="big amt" id="kNet">—</span><span class="sub" id="kNetSub"></span></div>
       <div class="acct-list" id="accts"></div>
-      <form class="addacct" id="acctForm" autocomplete="off">
+      <form class="addacct" id="acctForm" autocomplete="off" hidden>
         <input id="aName" maxlength="40" placeholder="Name, e.g. Savings account" aria-label="Account name" required>
         <input id="aBal" inputmode="decimal" placeholder="Balance" aria-label="Balance" required>
         <select id="aCur" aria-label="Currency"></select>
         <button class="icon-btn" type="submit">Add</button>
       </form>
-      <p class="fine">Names and balances only. Never store account numbers or logins here.</p>
+      <details class="more"><summary>About this</summary><p class="fine">Names and balances only. Never store account numbers or logins here.</p></details>
     </div>
     <div class="panel" data-show="net" data-auto>
       <h2>Savings over time</h2>
       <div id="netChart" class="chart"></div>
-      <p class="fine">A point is added each day you update a balance.</p>
+      <details class="more"><summary>About this</summary><p class="fine">A point is added each day you update a balance.</p></details>
     </div>
     <div class="panel" id="auPanel" hidden data-show="transfers" data-auto>
       <div class="panel-head"><h2>Money transferred in</h2><span class="small muted" id="auTitle"></span></div>
@@ -321,44 +322,17 @@
 
   <!-- SETTINGS -->
   <section class="tab" id="tab-settings" hidden>
-    <details class="panel set-sec" id="secProfile" open>
-      <summary><h2>You</h2></summary>
-      <div class="fields">
-        <div class="field"><label class="label" for="setName">Your name</label><input id="setName" maxlength="40" autocomplete="off" placeholder="Optional"></div>
-        <div class="inline2">
-          <div class="field"><label class="label" for="setLang">Language</label><select id="setLang"><option value="en">English</option><option value="cs">Čeština</option></select></div>
-          <div class="field"><label class="label" for="setTheme">Theme</label><select id="setTheme"><option value="system">Match my phone</option><option value="light">Light</option><option value="dark">Dark</option></select></div>
-        </div>
-        <button class="icon-btn wide" id="rerunSetup" type="button">Go through the setup questions again</button>
-      </div>
-    </details>
-
-    <details class="panel set-sec" id="secMoney">
-      <summary><h2>Currency &amp; exchange rates</h2></summary>
-      <div class="fields">
-        <div class="inline2">
-          <div class="field"><label class="label" for="setCur">Main currency</label><select id="setCur"></select></div>
-          <div class="field"><label class="label" for="setCur2">Second currency</label><select id="setCur2"></select></div>
-        </div>
-        <p class="hint" id="curHint"></p>
-        <label class="check" for="autoRates"><input type="checkbox" id="autoRates"> Update daily from the European Central Bank reference rate</label>
-        <p class="fine" id="ratesInfo"></p>
-        <div class="set-grid" id="rateRows"></div>
-        <div class="btnrow"><button class="icon-btn" id="ratesNow" type="button">Update now</button><button class="primary" id="ratesSave" type="button" disabled>Save rates</button></div>
-        <p class="fine">Checking rates contacts one public site and sends nothing about you or your money.</p>
-      </div>
-    </details>
-
+    <h3 class="set-group">Budget</h3>
+    <div class="set-list">
     <details class="panel set-sec" id="secPay">
-      <summary><h2>Budget month</h2></summary>
+      <summary><span class="si"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span><span class="sx"><h2>Budget month</h2><small class="ss" id="ss-secPay"></small></span></summary>
       <div class="fields">
         <div class="field"><label class="label" for="setPeriod">Each budget month runs</label><select id="setPeriod"><option value="calendar">Calendar month</option><option value="payday">Payday to payday</option></select></div>
         <div class="field" id="setPaydayWrap" hidden><label class="label" for="setPayday">Payday</label><select id="setPayday"></select></div>
       </div>
     </details>
-
     <details class="panel set-sec" id="secBudget">
-      <summary><h2>Categories &amp; budgets</h2></summary>
+      <summary><span class="si"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h7"/></svg></span><span class="sx"><h2>Categories &amp; budgets</h2><small class="ss" id="ss-secBudget"></small></span></summary>
       <div class="panel-head"><span class="label sec">Spending, with monthly budgets</span><button class="link" id="catAdd" type="button">+ Add</button></div>
       <div class="cat-list" id="setCats"></div>
       <p class="small muted" id="catTotal"></p>
@@ -375,44 +349,13 @@
       <div class="cat-list" id="setInc"></div>
       <div class="plan" id="planBox"></div>
       <div class="btnrow"><button class="primary" id="saveSettings" type="button" disabled>Save changes</button><span class="hint" id="setHint"></span></div>
-      <p class="fine">Renaming a category renames it on every entry. Removing one moves its entries to another category of the same type.</p>
+      <details class="more"><summary>About this</summary><p class="fine">Renaming a category renames it on every entry. Removing one moves its entries to another category of the same type.</p></details>
     </details>
-
-    <details class="panel set-sec" id="secDisplay">
-      <summary><h2>Display</h2></summary>
-      <div class="fields">
-        <p class="small muted">Choose which charts and graphics to show. Sections with nothing in them yet hide themselves until there's data.</p>
-        <div id="dispList" class="disp-list"></div>
-      </div>
-    </details>
-
-    <details class="panel set-sec" id="secCover">
-      <summary><h2>Bills over budget</h2></summary>
-      <div class="fields">
-        <p class="small muted">Bills stay out of your daily allowance. When one comes in higher than its monthly budget, choose where the extra comes from.</p>
-        <div class="field"><label class="label" for="coverSrc">Cover the extra from</label><select id="coverSrc"></select></div>
-        <div class="field" id="coverAutoWrap" hidden><label class="label" for="coverAuto">Cover automatically up to (<span id="coverCur">CZK</span> a month)</label><input id="coverAuto" inputmode="decimal" class="amt" placeholder="0">
-          <span class="fine">Up to this amount is covered without asking. Above it, the app asks you first, on the Health and Overview tabs. Until you answer, the extra comes out of everyday spending.</span></div>
-        <p class="hint" id="coverInfo"></p>
-        <p class="fine">Add accounts on the Savings tab to choose them here. The app keeps track only; it doesn't move money.</p>
-      </div>
-    </details>
-
-    <details class="panel set-sec" id="secSalary">
-      <summary><h2>Salary</h2></summary>
-      <div class="fields">
-        <p class="small muted">Your pay can change a little each month, for example when university meals are taken off it, and it can arrive a day or two early or late. Tap Salary arrived and enter what actually came in.</p>
-        <button class="primary" id="salaryBtn2" type="button">Salary arrived</button>
-        <div class="field"><label class="label" for="salCoverSrc">If it's less than usual, take the difference from</label><select id="salCoverSrc"></select></div>
-        <p class="hint" id="salInfo"></p>
-        <p class="fine">Pay that arrives up to 4 days before payday counts for the new period. A bank export of the same salary replaces what you entered. The app keeps track only; it doesn't move money.</p>
-      </div>
-    </details>
-
     <details class="panel set-sec" id="secRecurring">
-      <summary><h2>Pay, bills &amp; reminders</h2></summary>
+      <summary><span class="si"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3"/><path d="M18 3v4h-4M6 21v-4h4"/></svg></span><span class="sx"><h2>Pay, bills &amp; reminders</h2><small class="ss" id="ss-secRecurring"></small></span></summary>
       <div class="panel-head"><span class="small muted">Recurring items</span><button class="link" id="recAdd" type="button">+ New</button></div>
-      <p class="small muted">Salary, transfers to savings and bills. Items set to add automatically appear in your ledger at their date and time; when the bank export arrives, the bank's version replaces them.</p>
+      <p class="small muted">Salary, bills and transfers that repeat.</p>
+        <details class="more"><summary>About this</summary><p class="fine">Salary, transfers to savings and bills. Items set to add automatically appear in your ledger at their date and time; when the bank export arrives, the bank's version replaces them.</p></details>
       <ul id="recList" class="rec-list"></ul>
       <h3>Reminders</h3>
       <p class="small muted">Your phone's calendar delivers the reminders, even when Kč Ledger is closed. Nothing goes through a server.</p>
@@ -420,11 +363,65 @@
       <div class="btnrow"><button class="primary" id="icsBtn" type="button">Add reminders to my calendar</button></div>
       <p class="hint" id="icsHint"></p>
     </details>
-
-    <details class="panel set-sec" id="secApplePay">
-      <summary><h2>Apple Pay purchases</h2></summary>
+    <details class="panel set-sec" id="secSalary">
+      <summary><span class="si"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.5"/></svg></span><span class="sx"><h2>Salary</h2><small class="ss" id="ss-secSalary"></small></span></summary>
       <div class="fields">
-        <p class="small muted">Log every in-store Apple Pay purchase with an automation in the Shortcuts app on your iPhone. When your bank export arrives, the bank's entry replaces the Apple Pay one and keeps your category, so nothing is counted twice. There are two ways to do it.</p>
+        <p class="small muted">Enter what actually came in each payday.</p>
+        <details class="more"><summary>About this</summary><p class="fine">Your pay can change a little each month, for example when university meals are taken off it, and it can arrive a day or two early or late. Tap Salary arrived and enter what actually came in.</p></details>
+        <button class="primary" id="salaryBtn2" type="button">Salary arrived</button>
+        <div class="field"><label class="label" for="salCoverSrc">If it's less than usual, take the difference from</label><select id="salCoverSrc"></select></div>
+        <p class="hint" id="salInfo"></p>
+        <details class="more"><summary>About this</summary><p class="fine">Pay that arrives up to 4 days before payday counts for the new period. A bank export of the same salary replaces what you entered. The app keeps track only; it doesn't move money.</p></details>
+      </div>
+    </details>
+    <details class="panel set-sec" id="secCover">
+      <summary><span class="si"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"/></svg></span><span class="sx"><h2>Bills over budget</h2><small class="ss" id="ss-secCover"></small></span></summary>
+      <div class="fields">
+        <p class="small muted">Choose where a bill's extra comes from when it's over budget.</p>
+        <details class="more"><summary>About this</summary><p class="fine">Bills stay out of your daily allowance. When one comes in higher than its monthly budget, choose where the extra comes from.</p></details>
+        <div class="field"><label class="label" for="coverSrc">Cover the extra from</label><select id="coverSrc"></select></div>
+        <div class="field" id="coverAutoWrap" hidden><label class="label" for="coverAuto">Cover automatically up to (<span id="coverCur">CZK</span> a month)</label><input id="coverAuto" inputmode="decimal" class="amt" placeholder="0">
+          <span class="fine">Up to this amount is covered without asking. Above it, the app asks you first, on the Health and Overview tabs. Until you answer, the extra comes out of everyday spending.</span></div>
+        <p class="hint" id="coverInfo"></p>
+        <details class="more"><summary>About this</summary><p class="fine">Add accounts on the Savings tab to choose them here. The app keeps track only; it doesn't move money.</p></details>
+      </div>
+    </details>
+    <details class="panel set-sec" id="secMoney">
+      <summary><span class="si"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg></span><span class="sx"><h2>Currency &amp; exchange rates</h2><small class="ss" id="ss-secMoney"></small></span></summary>
+      <div class="fields">
+        <div class="inline2">
+          <div class="field"><label class="label" for="setCur">Main currency</label><select id="setCur"></select></div>
+          <div class="field"><label class="label" for="setCur2">Second currency</label><select id="setCur2"></select></div>
+        </div>
+        <p class="hint" id="curHint"></p>
+        <label class="check" for="autoRates"><input type="checkbox" id="autoRates"> Update daily from the European Central Bank reference rate</label>
+        <p class="fine" id="ratesInfo"></p>
+        <div class="set-grid" id="rateRows"></div>
+        <div class="btnrow"><button class="icon-btn" id="ratesNow" type="button">Update now</button><button class="primary" id="ratesSave" type="button" disabled>Save rates</button></div>
+        <details class="more"><summary>About this</summary><p class="fine">Checking rates contacts one public site and sends nothing about you or your money.</p></details>
+      </div>
+    </details>
+    </div>
+
+    <h3 class="set-group">Getting data in</h3>
+    <div class="set-list">
+    <details class="panel set-sec" id="secImport">
+      <summary><span class="si"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg></span><span class="sx"><h2>Importing</h2><small class="ss" id="ss-secImport"></small></span></summary>
+      <div class="fields">
+        <button class="primary wide" id="importBtn" type="button">Choose files to import</button>
+        <input type="file" id="importFile" accept=".csv,.txt,.json,text/csv,application/json" multiple hidden>
+        <div class="field"><label class="label" for="setImport">Main bank</label><select id="setImport"></select></div>
+        <p class="small" id="importHow"></p>
+        <div class="field"><label class="label" for="setOwn">Your own account numbers</label><textarea id="setOwn" rows="2" placeholder="One per line"></textarea>
+          <span class="fine">Transfers between these are left out of spending and income. They're learned from your imports too.</span></div>
+        <div class="btnrow"><span class="small muted" id="mapsInfo"></span><button class="link" id="mapsReset" type="button">Forget column matches</button></div>
+      </div>
+    </details>
+    <details class="panel set-sec" id="secApplePay">
+      <summary><span class="si"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10 18.5h4"/></svg></span><span class="sx"><h2>Apple Pay purchases</h2><small class="ss" id="ss-secApplePay"></small></span></summary>
+      <div class="fields">
+        <p class="small muted">Log in-store Apple Pay purchases automatically.</p>
+        <details class="more"><summary>About this</summary><p class="fine">Log every in-store Apple Pay purchase with an automation in the Shortcuts app on your iPhone. When your bank export arrives, the bank's entry replaces the Apple Pay one and keeps your category, so nothing is counted twice. There are two ways to do it.</p></details>
 
         <h3>1. Private: a file in iCloud Drive</h3>
         <p class="small">Each purchase is added to a text file in your iCloud Drive, so nothing leaves your Apple account. Import the file whenever you like; purchases already here are skipped.</p>
@@ -438,7 +435,7 @@
         </ol>
         <div id="payFileRecipe" class="recipe"></div>
         <button class="primary" id="payImportBtn" type="button">Import the Apple Pay file</button>
-        <p class="fine">The file is in iCloud Drive → Shortcuts. Importing it from Entries → Import a bank file works too.</p>
+        <details class="more"><summary>About this</summary><p class="fine">The file is in iCloud Drive → Shortcuts. Importing it from Entries → Import a bank file works too.</p></details>
 
         <h3>2. Automatic: a private inbox on GitHub</h3>
         <p class="small">Kč Ledger collects each purchase by itself whenever you open it, stores it encrypted and deletes it from GitHub. Until then, the shop name and amount sit unencrypted in your private repository.</p>
@@ -458,46 +455,19 @@
             <li>In that field, type KCPAY | then insert Shortcut Input and pick Merchant, type | then insert Shortcut Input again and pick Amount. Tap Done.</li>
           </ol>
           <div id="payRecipe" class="recipe"></div>
-          <p class="fine">Purchases made without an internet connection can't reach the inbox. Your bank export still brings them in, or add Append to Text File to the same automation as a backup.</p>
+          <details class="more"><summary>About this</summary><p class="fine">Purchases made without an internet connection can't reach the inbox. Your bank export still brings them in, or add Append to Text File to the same automation as a backup.</p></details>
           <p class="small" id="payStatus"></p>
           <div class="btnrow wrap"><button class="primary" id="payCheckBtn" type="button">Check now</button><button class="icon-btn" id="payOffBtn" type="button">Turn off on this device</button></div>
         </div>
-        <p class="fine">Only in-store Apple Pay taps start the automation, not online payments. If nothing arrives, check that Wallet may use mobile data (iPhone Settings → Apps → Wallet).</p>
+        <details class="more"><summary>About this</summary><p class="fine">Only in-store Apple Pay taps start the automation, not online payments. If nothing arrives, check that Wallet may use mobile data (iPhone Settings → Apps → Wallet).</p></details>
       </div>
     </details>
+    </div>
 
-    <details class="panel set-sec" id="secImport">
-      <summary><h2>Importing</h2></summary>
-      <div class="fields">
-        <button class="primary wide" id="importBtn" type="button">Choose files to import</button>
-        <input type="file" id="importFile" accept=".csv,.txt,.json,text/csv,application/json" multiple hidden>
-        <div class="field"><label class="label" for="setImport">Main bank</label><select id="setImport"></select></div>
-        <p class="small" id="importHow"></p>
-        <div class="field"><label class="label" for="setOwn">Your own account numbers</label><textarea id="setOwn" rows="2" placeholder="One per line"></textarea>
-          <span class="fine">Transfers between these are left out of spending and income. They're learned from your imports too.</span></div>
-        <div class="btnrow"><span class="small muted" id="mapsInfo"></span><button class="link" id="mapsReset" type="button">Forget column matches</button></div>
-      </div>
-    </details>
-
-    <details class="panel set-sec" id="secKids">
-      <summary><h2>Child expenses</h2></summary>
-      <div class="fields">
-        <label class="check" for="kOn"><input type="checkbox" id="kOn"> Track child expenses to share with the other parent</label>
-        <div id="kFields" class="fields" hidden>
-          <div class="inline2">
-            <div class="field"><label class="label" for="kChild">Child's name</label><input id="kChild" maxlength="30" autocomplete="off"></div>
-            <div class="field"><label class="label" for="kName">Name for the tab</label><input id="kName" maxlength="40" autocomplete="off"></div>
-          </div>
-          <div class="field"><label class="label" for="kOther">Other parent's name</label><input id="kOther" maxlength="30" autocomplete="off"></div>
-          <div class="field"><label class="label" for="kShare">Usual split</label><select id="kShare"></select></div>
-          <label class="check" for="kBal"><input type="checkbox" id="kBal"> Keep a running balance of who owes whom</label>
-        </div>
-        <p class="fine">Turning this off hides the tab. Marked expenses keep their mark, so turning it on again brings everything back.</p>
-      </div>
-    </details>
-
+    <h3 class="set-group">Your data</h3>
+    <div class="set-list">
     <details class="panel set-sec" id="secBackup">
-      <summary><h2>Backup</h2></summary>
+      <summary><span class="si"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18a5 5 0 0 1-.6-10A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9z"/><path d="M12 11v6M9.5 13.5L12 11l2.5 2.5"/></svg></span><span class="sx"><h2>Backup</h2><small class="ss" id="ss-secBackup"></small></span></summary>
       <p class="small muted">Your data lives only on this device unless you turn on sync. Save an encrypted backup to your files now and then. It opens with your passcode. <span id="lastBackup"></span></p>
       <div class="field"><label class="label" for="backupEvery">Remind me to back up</label><select id="backupEvery"><option value="7">Every week</option><option value="30">Every month</option><option value="0">Never</option></select></div>
       <div class="btnrow wrap"><button class="primary" id="backupBtn" type="button">Save encrypted backup</button><button class="icon-btn" id="restoreBtn" type="button">Restore a backup</button><button class="icon-btn" id="csvBtn" type="button">Export CSV</button></div>
@@ -509,11 +479,11 @@
       </div>
       <p class="hint" id="backupHint"></p>
     </details>
-
     <details class="panel set-sec" id="secSync">
-      <summary><h2>Sync between devices</h2><span class="pill" id="syncPill">Off</span></summary>
+      <summary><span class="si"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7h-9a5 5 0 0 0 0 10h2M4 17h9a5 5 0 0 0 0-10h-2"/><path d="M17 4l3 3-3 3M7 20l-3-3 3-3"/></svg></span><span class="sx"><h2>Sync between devices</h2><small class="ss" id="ss-secSync"></small></span><span class="pill" id="syncPill">Off</span></summary>
       <div id="syncPanel">
-        <p class="small muted">Keeps your phone and computer in step through a private GitHub repository. Everything is encrypted on the device first, so GitHub only ever stores scrambled data.</p>
+        <p class="small muted">Keep your phone and computer in step, fully encrypted.</p>
+        <details class="more"><summary>About this</summary><p class="fine">Keeps your phone and computer in step through a private GitHub repository. Everything is encrypted on the device first, so GitHub only ever stores scrambled data.</p></details>
         <div id="syncSetup" class="fields">
           <div class="field"><label class="label" for="syncRepo">Private repository</label><input id="syncRepo" placeholder="your-username/ledger-data" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
           <div class="field"><label class="label" for="syncToken">Access token</label><input id="syncToken" type="password" placeholder="github_pat_…" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
@@ -531,9 +501,8 @@
         <p class="hint" id="syncHint" role="status"></p>
       </div>
     </details>
-
     <details class="panel set-sec" id="secSecurity">
-      <summary><h2>Security</h2></summary>
+      <summary><span class="si"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg></span><span class="sx"><h2>Security</h2><small class="ss" id="ss-secSecurity"></small></span></summary>
       <div class="bio-row"><div><b>Face ID unlock</b><p class="small muted" id="bioInfo">Unlock with Face ID instead of typing your passcode. Your passcode keeps working too.</p></div>
         <button class="icon-btn" id="bioToggle" type="button">Turn on</button></div>
       <div class="field"><label class="label" for="autoLock">Lock automatically after</label>
@@ -553,16 +522,57 @@
         <button class="danger" id="eraseBtn" type="button">Erase all data</button>
       </details>
     </details>
-    <p class="fine hfine">Kč Ledger · version 16</p>
+    </div>
+
+    <h3 class="set-group">App</h3>
+    <div class="set-list">
+    <details class="panel set-sec" id="secProfile">
+      <summary><span class="si"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span><span class="sx"><h2>You</h2><small class="ss" id="ss-secProfile"></small></span></summary>
+      <div class="fields">
+        <div class="field"><label class="label" for="setName">Your name</label><input id="setName" maxlength="40" autocomplete="off" placeholder="Optional"></div>
+        <div class="inline2">
+          <div class="field"><label class="label" for="setLang">Language</label><select id="setLang"><option value="en">English</option><option value="cs">Čeština</option></select></div>
+          <div class="field"><label class="label" for="setTheme">Theme</label><select id="setTheme"><option value="system">Match my phone</option><option value="light">Light</option><option value="dark">Dark</option></select></div>
+        </div>
+        <button class="icon-btn wide" id="rerunSetup" type="button">Go through the setup questions again</button>
+      </div>
+    </details>
+    <details class="panel set-sec" id="secDisplay">
+      <summary><span class="si"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></span><span class="sx"><h2>Display</h2><small class="ss" id="ss-secDisplay"></small></span></summary>
+      <div class="fields">
+        <p class="small muted">Choose which charts and graphics to show.</p>
+        <details class="more"><summary>About this</summary><p class="fine">Choose which charts and graphics to show. Sections with nothing in them yet hide themselves until there's data.</p></details>
+        <div id="dispList" class="disp-list"></div>
+      </div>
+    </details>
+    <details class="panel set-sec" id="secKids">
+      <summary><span class="si"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3"/><path d="M6 20a6 6 0 0 1 12 0"/></svg></span><span class="sx"><h2>Child expenses</h2><small class="ss" id="ss-secKids"></small></span></summary>
+      <div class="fields">
+        <label class="check" for="kOn"><input type="checkbox" id="kOn"> Track child expenses to share with the other parent</label>
+        <div id="kFields" class="fields" hidden>
+          <div class="inline2">
+            <div class="field"><label class="label" for="kChild">Child's name</label><input id="kChild" maxlength="30" autocomplete="off"></div>
+            <div class="field"><label class="label" for="kName">Name for the tab</label><input id="kName" maxlength="40" autocomplete="off"></div>
+          </div>
+          <div class="field"><label class="label" for="kOther">Other parent's name</label><input id="kOther" maxlength="30" autocomplete="off"></div>
+          <div class="field"><label class="label" for="kShare">Usual split</label><select id="kShare"></select></div>
+          <label class="check" for="kBal"><input type="checkbox" id="kBal"> Keep a running balance of who owes whom</label>
+        </div>
+        <details class="more"><summary>About this</summary><p class="fine">Turning this off hides the tab. Marked expenses keep their mark, so turning it on again brings everything back.</p></details>
+      </div>
+    </details>
+    </div>
+
+    <p class="fine hfine">Kč Ledger · version 17</p>
   </section>
 
   <nav class="tabbar" aria-label="Sections">
-    <button data-tab="health" aria-current="page">Health</button>
-    <button data-tab="overview">Overview</button>
-    <button data-tab="entries">Entries</button>
-    <button data-tab="savings">Savings</button>
-    <button data-tab="kids" id="tabKids" hidden>Child</button>
-    <button data-tab="settings">Settings</button>
+    <button data-tab="health" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg><span>Health</span></button>
+    <button data-tab="overview"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span>Overview</span></button>
+    <button data-tab="entries"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg><span>Entries</span></button>
+    <button data-tab="savings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 11a7 6 0 0 1 13-2h2v4h-2a7 6 0 0 1-3 3v3h-3v-2H9v2H6v-3a6 6 0 0 1-1-5z"/><circle cx="15" cy="10" r=".6"/></svg><span>Savings</span></button>
+    <button data-tab="kids" id="tabKidsBtn" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3"/><path d="M6 20a6 6 0 0 1 12 0"/></svg><span id="tabKids">Child</span></button>
+    <button data-tab="settings"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg><span>Settings</span></button>
   </nav>
 </div>
 
@@ -580,9 +590,9 @@
   <div class="viewer-bar"><button class="icon-btn" id="viewNext">Next image</button><span class="spacer"></span><button class="danger" id="viewDel">Remove image</button></div>
 </div>
 <div id="toast" class="toast" role="status" hidden></div>
-<script src="i18n.js?v=16"></script>
-<script src="import.js?v=16"></script>
-<script src="report.js?v=16"></script>
-<script src="app.js?v=16"></script>
+<script src="i18n.js?v=17"></script>
+<script src="import.js?v=17"></script>
+<script src="report.js?v=17"></script>
+<script src="app.js?v=17"></script>
 </body>
 </html>

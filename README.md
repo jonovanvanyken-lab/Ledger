@@ -71,6 +71,19 @@ Text recognition: tesseract.js (Apache 2.0). PDF statements: jsPDF (MIT) with a 
 - **Display** (Settings) switches each chart and graphic on or off, plus animations and celebrations. Empty sections hide themselves.
 - New: one-off check after imports, spending alerts, Year in review, Owed & owing, money-flow chart, pot and goal jars, celebrations and the under-budget streak.
 
+## Version 17
+
+- **New look:** tab bar with icons, cleaner panels, numbers in the app's own font, messages at the top of the screen.
+- **Health:** the face and "You can spend" in one card, a compact streak with Catch up, "How it's worked out" folded away, shorter checks.
+- **Overview:** split into Summary, Categories, Calendar and Trends. The donut is gone; budget vs actual lists categories with spending first and the rest on one line.
+- **Entries:** Add, Screenshot and Import in one row; entries grouped under dates.
+- **Savings:** pots and goals in one set of cards; forms tucked behind + buttons.
+- **Settings:** grouped into Budget, Getting data in, Your data and App, each row with an icon and its current setting. Explanations sit behind "About this".
+
+## Version 16
+
+- **Catch up** under the streak: how many no-spend days get you back on track.
+
 ## Version 15
 
 - **Back on track** (Health → Streak): how many days without everyday spending it takes to get back to your usual daily allowance.
