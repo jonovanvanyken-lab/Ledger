@@ -3,7 +3,7 @@
    A random data key encrypts the ledger and images. That key is stored wrapped by your passcode
    (PBKDF2-SHA256, 600k rounds → AES-GCM) and, if you turn it on, by a Face ID passkey (WebAuthn PRF → HKDF → AES-GCM). */
 "use strict";
-const ITER=600000,DAY=864e5,APP_VERSION=19;
+const ITER=600000,DAY=864e5,APP_VERSION=20;
 const $=id=>document.getElementById(id);
 const te=new TextEncoder(),td=new TextDecoder();
 const b64=buf=>{let s="";const b=buf instanceof Uint8Array?buf:new Uint8Array(buf);for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)};
@@ -145,7 +145,7 @@ async function showApp(){
   $("wizard").hidden=true;$("app").hidden=false;cur=periodOfDate(new Date());$("fDate").value=defaultDate();
   if(docs.settings.hideOnOpen)setPrivate(true);
   if(await runAuto())await persist();
-  showTab("health");render();armIdle();updateRates(false);syncSoon(800);setTimeout(()=>payCheck(false),1200);
+  showTab("health");render();armIdle();updateRates(false);syncSoon(800);setTimeout(()=>payCheck(false),1200);setTimeout(()=>fundPrices(false),2500);
 }
 function lock(){
   try{showQuote()}catch(_){}
@@ -2186,7 +2186,8 @@ function renderFunds(){
     const top=el("div","fund-top");top.append(el("b","",f.name),el("b","amt",fmt(f.value)));
     const sub=el("div","fund-sub");sub.append(el("span","",(f.term==="short"?t("Short term"):t("Long term"))+" · "+t("{n} units",{n:(+f.units||0).toLocaleString(LOC())})+(f.units?" · "+t("{x} a unit",{x:unitPrice((+f.value||0)/f.units)}):"")),
       el("span","amt "+(gg>=0?"pos":"neg"),gainTxt(+f.value||0,+f.invested||0)));
-    b.append(top,sub);const sp=fundSpark(f);if(sp)b.appendChild(sp);b.appendChild(el("span","fund-asof",t("Updated {d}",{d:dShort(f.asOf||todayIso())})));
+    b.append(top,sub);const sp=fundSpark(f);if(sp)b.appendChild(sp);
+    b.appendChild(el("span","fund-asof",f.price&&f.priceDate===f.asOf?t("Price {x} on {d} · updates daily from Raiffeisenbank",{x:unitPrice(f.price),d:dShort(f.priceDate)}):t("Updated {d}",{d:dShort(f.asOf||todayIso())})));
     b.addEventListener("click",()=>openFund(f.id));box.appendChild(b)});
 }
 function openFund(id,pre,shotNote){
@@ -2200,7 +2201,7 @@ function openFund(id,pre,shotNote){
   save.addEventListener("click",async()=>{const v=parseNum(value.value),i=parseNum(inv.value),u=parseNum(units.value)||0;
     if(!name.value.trim()){hint.textContent=t("Give the fund a name.");return}if(!(v>=0)||!(i>=0)||isNaN(v)||isNaN(i)){hint.textContent=t("Enter what it's worth now and what you've put in.");return}
     docs.funds=docs.funds||{list:[]};if(!exist)docs.funds.list.push(f);fundSave(f,{name:name.value.trim(),term:term.value,units:u,invested:i,value:v},date.value||todayIso());
-    await persist();closeSheet();render();toast(exist?t("{n} updated.",{n:f.name}):t("{n} added.",{n:f.name}))});
+    await persist();closeSheet();render();toast(exist?t("{n} updated.",{n:f.name}):t("{n} added.",{n:f.name}));setTimeout(()=>fundPrices(true),400)});
   const body=[];if(shotNote)body.push(el("p","small muted",shotNote));
   body.push(fld(t("Fund"),name),fld(t("Kept for"),term),fld(t("Worth now ({c})",{c:baseCur()}),value),fld(t("Put in so far ({c})",{c:baseCur()}),inv),fld(t("Units"),units),fld(t("As of"),date),save,hint);
   if(exist){const del=el("button","danger",t("Remove fund"));del.type="button";del.addEventListener("click",async()=>{if(!del.classList.contains("confirm")){del.classList.add("confirm");del.textContent=t("Tap again to remove");return}
@@ -2224,6 +2225,31 @@ function fundFromShot(h){
   openFund(match?match.id:null,h,match?t("Read from your screenshot. Check the numbers, then save the update."):t("Read from your screenshot. Check the numbers and save to start tracking this fund."));
 }
 $("fundAddBtn").addEventListener("click",()=>openFund(null));
+
+/* ---------- daily fund prices ---------- */
+// Raiffeisenbank's public list of every fund it sells (same request for everyone, so it says nothing about what you hold).
+// Fetched at most every 6 hours; each fund with units gets value = units × price on the price date.
+const FUND_PRICES="https://www.rb.cz/frontend-controller/backend-data/fund/listActual";
+let fundBusy=false;
+function localDay(isoZ){const d=new Date(isoZ);return isNaN(d)?null:iso(d)}
+async function fundPrices(force){
+  const list=fundList();if(!key||fundBusy||!list.length||!navigator.onLine)return 0;
+  const dev=docs._device=docs._device||{};if(!force&&dev.fundPx&&Date.now()-dev.fundPx<6*3600e3)return 0;fundBusy=true;let changed=0;
+  try{const r=await fetch(FUND_PRICES,{credentials:"omit",cache:"no-store",referrerPolicy:"no-referrer"});if(!r.ok)throw new Error("http "+r.status);
+    const j=await r.json();const rows=(j&&j.fundRateList)||[];if(!rows.length)throw new Error("empty");
+    const byIsin={};rows.forEach(x=>{if(x&&x.isin&&+x.rate>0)byIsin[x.isin]=x});
+    list.forEach(f=>{let x=f.isin?byIsin[f.isin]:null;
+      if(!x){const n=norm(f.name).replace(/\s+/g," ").trim();x=rows.find(y=>y.donFund&&norm(y.donFund.name).replace(/\s+/g," ").trim()===n)||null;if(x)f.isin=x.isin}
+      if(!x||!(+f.units>0))return;const d=localDay(x.date);if(!d)return;
+      if(f.priceDate&&d<f.priceDate)return;const v=Math.round(f.units*x.rate*100)/100;
+      if(f.price===+x.rate&&f.priceDate===d&&Math.abs((+f.value||0)-v)<0.01)return;
+      f.price=+x.rate;f.priceDate=d;const keepAsOf=f.asOf&&f.asOf>d;if(!keepAsOf){fundSave(f,{value:v},d)}changed++});
+    dev.fundPx=Date.now();delete dev.fundPxErr;await persist();if(changed)render();
+  }catch(e){dev.fundPxErr=1}
+  finally{fundBusy=false}
+  return changed;
+}
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&key)fundPrices(false)});
 
 /* ---------- salary check-in ---------- */
 // The salary is the largest monthly recurring income item. "Salary arrived" records what actually came in.

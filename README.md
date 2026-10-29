@@ -71,6 +71,10 @@ Text recognition: tesseract.js (Apache 2.0). PDF statements: jsPDF (MIT) with a 
 - **Display** (Settings) switches each chart and graphic on or off, plus animations and celebrations. Empty sections hide themselves.
 - New: one-off check after imports, spending alerts, Year in review, Owed & owing, money-flow chart, pot and goal jars, celebrations and the under-budget streak.
 
+## Version 20
+
+- **Daily fund prices:** funds bought through Raiffeisenbank update their value by themselves, from the bank's public list of fund prices (the same list for everyone, so it reveals nothing about what you hold). After a new purchase, a screenshot of the fund's detail screen updates the units and the amount put in.
+
 ## Version 19
 
 - **Investment funds** (Savings → Investing): track each fund's value against what you've put in, with gain or loss, units and price per unit, and a small chart over time. Update by screenshotting the fund's detail screen in your bank's app and reading it with Entries → Screenshot, or type the numbers in.
