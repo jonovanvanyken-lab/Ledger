@@ -3,7 +3,7 @@
    A random data key encrypts the ledger and images. That key is stored wrapped by your passcode
    (PBKDF2-SHA256, 600k rounds → AES-GCM) and, if you turn it on, by a Face ID passkey (WebAuthn PRF → HKDF → AES-GCM). */
 "use strict";
-const ITER=600000,DAY=864e5,APP_VERSION=18;
+const ITER=600000,DAY=864e5,APP_VERSION=19;
 const $=id=>document.getElementById(id);
 const te=new TextEncoder(),td=new TextDecoder();
 const b64=buf=>{let s="";const b=buf instanceof Uint8Array?buf:new Uint8Array(buf);for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)};
@@ -759,7 +759,7 @@ function openGoal(id){
   openSheet(id?t("Edit goal"):t("New goal"),[fld(t("Name"),name),fld(t("Target ({c})",{c:baseCur()}),target),fld(t("Target date (optional)"),date),fld(t("How progress is counted"),src),startF,row,hint]);
 }
 function renderInvest(){
-  const panel=$("investPanel");const ic=investCats();panel.hidden=!ic.length;if(!ic.length)return;
+  const panel=$("investPanel");const ic=investCats();renderFunds();panel.hidden=!ic.length&&!fundList().length;$("invKpis").hidden=!ic.length;$("invSplit").hidden=!ic.length;$("invChart").hidden=!ic.length;$("invLegend").hidden=!ic.length;if(!ic.length)return;
   const s=settings();const tg=ic.reduce((a,c)=>a+s.targets[c],0);const tt=totalsP(curP());const m=ic.reduce((a,c)=>a+(tt.byCat["saving:"+c]||0),0);const total=investTotalSince(null);
   const first=allItems().filter(x=>x.i.type==="saving"&&ic.includes(x.i.cat)).map(x=>x.i.date).sort()[0];
   $("invMonth").textContent=fmt(m);$("invMonthOf").textContent=tg?t("of {x} target",{x:fmt(tg)}):"";$("invTotal").textContent=fmt(total);
@@ -1253,6 +1253,7 @@ $("shotFile").addEventListener("change",async e=>{const f=e.target.files[0];e.ta
   closeReview();shotFile=f;$("shotPanel").hidden=false;$("shotPreview").src=URL.createObjectURL(f);$("shotActions").hidden=true;$("shotRawWrap").hidden=true;
   $("shotPanel").scrollIntoView({behavior:"smooth",block:"start"});
   try{const w=await getOcr(progress);progress(t("Reading text…"),0);const {data}=await w.recognize(f);if(!key||shotFile!==f)return;
+    const hold=parseHolding(data.text||"");if(hold){closeReview();showTab("savings");fundFromShot(hold);return}
     const res=parseShot(data.text||"");$("shotRaw").textContent=data.text||"";$("shotRawWrap").hidden=false;
     buildReview(res.rows.length?res.rows:[{date:todayIso(),name:"",amount:"",cur:baseCur(),type:"expense"}],res);
   }catch(err){progress(t("Couldn't read that image. You can still enter the details below and keep the screenshot."),0);buildReview([{date:todayIso(),name:"",amount:"",cur:baseCur(),type:"expense"}],{kind:"none",rows:[]})}
@@ -2160,6 +2161,69 @@ function fillDisplay(){
   DISPLAY.forEach(([grp,list])=>{if(grp==="Child expenses"&&!childCfg())return;box.appendChild(el("h3","",t(grp)));
     list.forEach(([k,label])=>{const l=chk(t(label),showOn(k));l.input.addEventListener("change",async()=>{const st=ensureSettings();st.display=st.display||{};if(l.input.checked)delete st.display[k];else st.display[k]=false;applyDisplay();await persist()});box.appendChild(l)})});
 }
+
+/* ---------- investment funds: what you put in vs what it's worth ---------- */
+// docs.funds.list = [{id, name, term:"long"|"short", units, invested, value, asOf, hist:[{d, v, i}]}]  (synced and encrypted like everything else)
+function fundList(){return ((docs.funds||{}).list||[])}
+function fundTotals(){return fundList().reduce((a,f)=>({v:a.v+(+f.value||0),i:a.i+(+f.invested||0)}),{v:0,i:0})}
+function fundSave(f,vals,dIso){
+  Object.assign(f,vals);f.asOf=dIso;f.hist=(f.hist||[]).filter(h=>h.d!==dIso).concat({d:dIso,v:+f.value||0,i:+f.invested||0}).sort((a,b)=>a.d.localeCompare(b.d)).slice(-400)}
+function gainTxt(v,i){const g=v-i,p=i?g/i*100:0;return (g>=0?"+":"−")+fmt(Math.abs(g))+" · "+(g>=0?"+":"−")+Math.abs(p).toFixed(2).replace(".",LANG==="cs"?",":".")+" %"}
+function fundSpark(f){
+  const h=(f.hist||[]);if(h.length<2)return null;const W=300,H=64,pad=4;const vals=h.flatMap(x=>[x.v,x.i]);const lo=Math.min(...vals),hi=Math.max(...vals);const rng=(hi-lo)||1;
+  const t0=dOf(h[0].d).getTime(),t1=dOf(h[h.length-1].d).getTime()||t0+1;const X=d=>pad+(dOf(d).getTime()-t0)/Math.max(1,t1-t0)*(W-2*pad),Y=v=>H-pad-(v-lo)/rng*(H-2*pad);
+  const path=k=>h.map((x,n)=>(n?"L":"M")+X(x.d).toFixed(1)+" "+Y(x[k]).toFixed(1)).join(" ");
+  const svg=document.createElementNS(NS,"svg");svg.setAttribute("viewBox",`0 0 ${W} ${H}`);svg.setAttribute("class","fund-spark");svg.setAttribute("preserveAspectRatio","none");
+  const mk=(d,cls)=>{const p=document.createElementNS(NS,"path");p.setAttribute("d",d);p.setAttribute("class",cls);svg.appendChild(p)};
+  mk(path("v")+` L${X(h[h.length-1].d).toFixed(1)} ${H} L${X(h[0].d).toFixed(1)} ${H} Z`,"area");mk(path("i"),"inv");mk(path("v"),"val");return svg}
+function unitPrice(v){const r=conv(1)||1;return (v*r).toLocaleString(LOC(),{minimumFractionDigits:2,maximumFractionDigits:4})+" "+(dispCode()==="CZK"?"Kč":dispCode())}
+function renderFunds(){
+  const box=$("fundsBox");if(!box)return;box.replaceChildren();const list=fundList();
+  if(!list.length){box.appendChild(el("p","small muted",t("Add your funds to see what they're worth against what you put in. The quickest way: screenshot a fund's detail screen in your bank's app and read it with Entries → Screenshot.")));return}
+  const tt=fundTotals();const head=el("div","fund-total");const g=tt.v-tt.i;
+  head.append(el("span","label",t("Worth now")),el("span","big amt",fmt(tt.v)),el("span","small amt "+(g>=0?"pos":"neg"),gainTxt(tt.v,tt.i)+" "+t("on {x} put in",{x:fmt(tt.i)})));box.appendChild(head);
+  list.forEach(f=>{const b=el("button","fund");b.type="button";const gg=(+f.value||0)-(+f.invested||0);
+    const top=el("div","fund-top");top.append(el("b","",f.name),el("b","amt",fmt(f.value)));
+    const sub=el("div","fund-sub");sub.append(el("span","",(f.term==="short"?t("Short term"):t("Long term"))+" · "+t("{n} units",{n:(+f.units||0).toLocaleString(LOC())})+(f.units?" · "+t("{x} a unit",{x:unitPrice((+f.value||0)/f.units)}):"")),
+      el("span","amt "+(gg>=0?"pos":"neg"),gainTxt(+f.value||0,+f.invested||0)));
+    b.append(top,sub);const sp=fundSpark(f);if(sp)b.appendChild(sp);b.appendChild(el("span","fund-asof",t("Updated {d}",{d:dShort(f.asOf||todayIso())})));
+    b.addEventListener("click",()=>openFund(f.id));box.appendChild(b)});
+}
+function openFund(id,pre,shotNote){
+  const exist=id?fundList().find(f=>f.id===id):null;const f=exist||{id:uid("fund"),name:"",term:"long",units:0,invested:0,value:0,hist:[]};const p=pre||{};
+  const name=el("input");name.value=p.name||f.name;name.maxLength=60;name.placeholder=t("e.g. Raiffeisen fond amerických akcií");
+  const term=selOf([["long",t("Long term (5+ years)")],["short",t("Short term (around 2 years)")]],f.term||"long");
+  const num=v=>{const e=el("input","amt");e.inputMode="decimal";e.value=v?String(v):"";return e};
+  const value=num(p.value!=null?p.value:f.value),inv=num(p.invested!=null?p.invested:f.invested),units=num(p.units!=null?p.units:f.units);
+  const date=el("input");date.type="date";date.value=todayIso();date.max=todayIso();const hint=el("p","hint err");
+  const save=el("button","primary",exist?t("Save update"):t("Add fund"));save.type="button";
+  save.addEventListener("click",async()=>{const v=parseNum(value.value),i=parseNum(inv.value),u=parseNum(units.value)||0;
+    if(!name.value.trim()){hint.textContent=t("Give the fund a name.");return}if(!(v>=0)||!(i>=0)||isNaN(v)||isNaN(i)){hint.textContent=t("Enter what it's worth now and what you've put in.");return}
+    docs.funds=docs.funds||{list:[]};if(!exist)docs.funds.list.push(f);fundSave(f,{name:name.value.trim(),term:term.value,units:u,invested:i,value:v},date.value||todayIso());
+    await persist();closeSheet();render();toast(exist?t("{n} updated.",{n:f.name}):t("{n} added.",{n:f.name}))});
+  const body=[];if(shotNote)body.push(el("p","small muted",shotNote));
+  body.push(fld(t("Fund"),name),fld(t("Kept for"),term),fld(t("Worth now ({c})",{c:baseCur()}),value),fld(t("Put in so far ({c})",{c:baseCur()}),inv),fld(t("Units"),units),fld(t("As of"),date),save,hint);
+  if(exist){const del=el("button","danger",t("Remove fund"));del.type="button";del.addEventListener("click",async()=>{if(!del.classList.contains("confirm")){del.classList.add("confirm");del.textContent=t("Tap again to remove");return}
+    docs.funds.list=fundList().filter(x=>x.id!==f.id);await persist();closeSheet();render()});body.push(del)}
+  openSheet(exist?f.name:t("Add a fund"),body);
+}
+// a holding-detail screenshot from a banking app: name, total invested, current value, units
+function parseHolding(text){
+  const lines=String(text||"").split(/\n+/).map(s=>s.trim()).filter(Boolean);const after=(re)=>{for(let n=0;n<lines.length;n++){if(re.test(lines[n])){
+      const rest=lines[n].replace(re,"");const m=rest.match(/-?[\d][\d\s.,]*/);if(m&&/\d/.test(m[0]))return m[0];const nx=(lines[n+1]||"").match(/-?[\d][\d\s.,]*/);if(nx)return nx[0]}}return null};
+  const inv=after(/total\s+invested|investov[aá]no\s+celkem|celkem\s+investov[aá]no|vlo[žz]eno\s+celkem|celkov[aá]\s+investice/i);
+  const val=after(/current\s+value|aktu[aá]ln[ií]\s+hodnota|sou[čc]asn[aá]\s+hodnota|tr[žz]n[ií]\s+hodnota/i);
+  const un=after(/no\.?\s*of\s+units|number\s+of\s+units|po[čc]et\s+(pod[ií]l[uů]|jednotek|kus[uů]|cenn[ýy]ch)/i);
+  if(val==null||(inv==null&&un==null))return null;
+  const nm=lines.find(l=>/\bfond\b|\bfund\b|\betf\b/i.test(l)&&!/mutual fund$|^pod[ií]lov[ýy] fond$/i.test(l)&&l.length>8)||"";
+  const amt=s=>{const v=Math.abs(KCImport.parseAmt(String(s).replace(/[^\d.,\s-]/g,"").trim()));return isNaN(v)?null:v};
+  return {name:nm.replace(/[|•·*_=<>«»]+/g," ").replace(/\s{2,}/g," ").trim(),invested:inv!=null?amt(inv):null,value:amt(val),units:un!=null?amt(un):null};
+}
+function fundFromShot(h){
+  const match=h.name?fundList().find(f=>sameName(f.name,h.name)||norm(f.name)===norm(h.name)):(fundList().length===1?fundList()[0]:null);
+  openFund(match?match.id:null,h,match?t("Read from your screenshot. Check the numbers, then save the update."):t("Read from your screenshot. Check the numbers and save to start tracking this fund."));
+}
+$("fundAddBtn").addEventListener("click",()=>openFund(null));
 
 /* ---------- salary check-in ---------- */
 // The salary is the largest monthly recurring income item. "Salary arrived" records what actually came in.

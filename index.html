@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="app.css?v=18">
+<link rel="stylesheet" href="app.css?v=19">
 <title>Kč Ledger</title>
 </head>
 <body>
@@ -39,7 +39,7 @@
       <p class="hint" id="lockHint"></p>
     </form>
     <figure class="lock-quote" id="lockQuote" hidden><blockquote id="lockQuoteText"></blockquote><figcaption id="lockQuoteBy"></figcaption></figure>
-    <p class="fine" id="lockVer">Kč Ledger · version 18</p>
+    <p class="fine" id="lockVer">Kč Ledger · version 19</p>
     <p class="fine" id="lockFine" hidden>Your entries are encrypted on this device. Nobody, including the app's host, can read them. There is no passcode reset: if you forget it, only a backup can bring your data back.</p>
   </div>
 </main>
@@ -255,14 +255,16 @@
       <details class="more"><summary>About this</summary><p class="fine">Just for keeping track. It doesn't affect your budget or the Health face.</p></details>
     </div>
     <div class="panel" id="investPanel" hidden>
-      <div class="panel-head"><h2>Investing</h2><span class="small muted" id="invNote"></span></div>
-      <div class="inv-kpis">
+      <div class="panel-head"><h2>Investing</h2><button class="link" id="fundAddBtn" type="button">+ Add fund</button></div>
+      <div class="funds" id="fundsBox"></div>
+      <div class="inv-kpis" id="invKpis">
         <div><span class="label">This month</span><span class="big amt" id="invMonth">—</span><span class="sub amt" id="invMonthOf"></span></div>
         <div><span class="label">Invested in total</span><span class="big amt" id="invTotal">—</span><span class="sub" id="invSince"></span></div>
       </div>
       <div class="inv-split" id="invSplit"></div>
       <div id="invChart" class="chart"></div>
-      <div class="legend"><span><i class="sw sw-sv"></i>Invested</span><span><i class="sw sw-plan"></i>Monthly target</span></div>
+      <div class="legend" id="invLegend"><span><i class="sw sw-sv"></i>Invested</span><span><i class="sw sw-plan"></i>Monthly target</span></div>
+      <p class="small muted" id="invNote"></p>
     </div>
     <div class="panel">
       <div class="panel-head"><h2>Accounts &amp; balances</h2><button class="link" id="acctAddBtn" type="button">+ Add account</button></div>
@@ -563,7 +565,7 @@
     </details>
     </div>
 
-    <p class="fine hfine">Kč Ledger · version 18</p>
+    <p class="fine hfine">Kč Ledger · version 19</p>
   </section>
 
   <nav class="tabbar" aria-label="Sections">
@@ -590,9 +592,9 @@
   <div class="viewer-bar"><button class="icon-btn" id="viewNext">Next image</button><span class="spacer"></span><button class="danger" id="viewDel">Remove image</button></div>
 </div>
 <div id="toast" class="toast" role="status" hidden></div>
-<script src="i18n.js?v=18"></script>
-<script src="import.js?v=18"></script>
-<script src="report.js?v=18"></script>
-<script src="app.js?v=18"></script>
+<script src="i18n.js?v=19"></script>
+<script src="import.js?v=19"></script>
+<script src="report.js?v=19"></script>
+<script src="app.js?v=19"></script>
 </body>
 </html>

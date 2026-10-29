@@ -71,6 +71,14 @@ Text recognition: tesseract.js (Apache 2.0). PDF statements: jsPDF (MIT) with a 
 - **Display** (Settings) switches each chart and graphic on or off, plus animations and celebrations. Empty sections hide themselves.
 - New: one-off check after imports, spending alerts, Year in review, Owed & owing, money-flow chart, pot and goal jars, celebrations and the under-budget streak.
 
+## Version 19
+
+- **Investment funds** (Savings → Investing): track each fund's value against what you've put in, with gain or loss, units and price per unit, and a small chart over time. Update by screenshotting the fund's detail screen in your bank's app and reading it with Entries → Screenshot, or type the numbers in.
+
+## Version 18
+
+- Setting up Apple Pay on a new or reinstalled device reconnects to your existing inbox.
+
 ## Version 17
 
 - **New look:** tab bar with icons, cleaner panels, numbers in the app's own font, messages at the top of the screen.
