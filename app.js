@@ -3,7 +3,7 @@
    A random data key encrypts the ledger and images. That key is stored wrapped by your passcode
    (PBKDF2-SHA256, 600k rounds → AES-GCM) and, if you turn it on, by a Face ID passkey (WebAuthn PRF → HKDF → AES-GCM). */
 "use strict";
-const ITER=600000,DAY=864e5,APP_VERSION=22;
+const ITER=600000,DAY=864e5,APP_VERSION=23;
 const $=id=>document.getElementById(id);
 const te=new TextEncoder(),td=new TextDecoder();
 const b64=buf=>{let s="";const b=buf instanceof Uint8Array?buf:new Uint8Array(buf);for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)};
@@ -1086,6 +1086,22 @@ $("csvBtn").addEventListener("click",()=>{const rows=[["date","time","type","cat
   const csv=rows.map(r=>r.map(v=>{v=String(v==null?"":v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(",")).join("\n");
   offerFile("kc-ledger-"+todayIso()+".csv",new Blob([csv],{type:"text/csv"}));toast(t("This CSV is not encrypted. Delete it once you're done with it."))});
 
+// everything readable in one file, for checking: entries, settings, bills, goals, funds and this period's figures.
+// Never includes this device's settings (sync and Apple Pay tokens), passcodes or images.
+$("dataBtn").addEventListener("click",()=>{
+  const d=JSON.parse(JSON.stringify(stripDevice(docs)));const p=curP();const h=healthCalc(p);const tt=totalsP(p);
+  const entries=allItems().map(({i})=>{const o={date:i.date,time:i.time||undefined,type:i.type,category:i.parts?undefined:i.cat,parts:i.parts,amount:i.amount,currency:i.cur,amount_base:i.czk,note:i.note||"",
+      source:{rb:"Raiffeisen export",csv:"bank export",shot:"screenshot",pay:"Apple Pay",auto:"added automatically",hand:"by hand"}[i.src]||i.src||"by hand",bank_id:i.src==="rb"||i.src==="csv"?String(i.id).replace(/^[a-z]+-/,""):undefined,
+      one_off:i.oneoff||undefined,not_counted_as_income:i.noInc||undefined,child:i.child||undefined,images:(i.att||[]).length||undefined};Object.keys(o).forEach(k=>o[k]===undefined&&delete o[k]);return o})
+    .sort((a,b)=>(a.date+(a.time||"")).localeCompare(b.date+(b.time||"")));
+  monthsOf(d).forEach(k=>delete d[k]);
+  const out={kind:"kc-readable",app:"Kč Ledger",version:APP_VERSION,exported:new Date().toISOString(),base_currency:baseCur(),
+    note:"Not encrypted. Keep it private and delete it when you're done.",
+    this_period:{from:p.s,to:p.e,days:p.days,day:h.today,days_left:h.daysLeft,everyday_budget:h.B,everyday_spent:Math.round(h.S*100)/100,bills_still_to_come:h.U,left_for_everyday:h.left!=null?Math.round(h.left*100)/100:null,per_day_now:h.perDay!=null?Math.round(h.perDay*100)/100:null,usual_per_day:Math.round(h.normal*100)/100,
+      one_offs:tt.oneoff,own_pots:tt.pot,bills_paid:tt.billcat,bills_over_budget:h.billOver?h.billOver.total:0,bills_over_from_everyday:h.billOver?h.billOver.uncovered:0,income_counted:tt.income,income_not_counted:tt.extraIn,transferred_in:tt.fromIn,saved_and_invested:tt.saving,by_category:tt.byCat},
+    settings:d.settings,recurring:d.recurring,goals:d.goals,funds:d.funds,accounts:d.accounts,debts:d.debts,child:d.child,entries};
+  offerFile("kc-ledger-data-"+todayIso()+".json",new Blob([JSON.stringify(out,null,1)],{type:"application/json"}));toast(t("This file is not encrypted. Delete it once you're done with it."))});
+
 /* ---------- passcode change, erase ---------- */
 $("passForm").addEventListener("submit",async e=>{e.preventDefault();const h=$("passHint");h.className="hint";
   const o=$("pOld").value,n=$("pNew").value;
@@ -1136,7 +1152,7 @@ async function handleImport(files){
           if(!ex)docs.recurring.list.push({...r,id:uid("r"),start:todayIso()});else if(ex.seeded){Object.assign(ex,{time:r.time||ex.time,day:r.day||ex.day});delete ex.seeded}});setupApplied=true}
         if(sd.goals&&Array.isArray(sd.goals.list)){docs.goals=docs.goals||{list:[]};sd.goals.list.forEach(g=>{const ex=docs.goals.list.find(x=>x.name===g.name);if(!ex)docs.goals.list.push({...g,id:uid("g")});else if(ex.seeded){Object.assign(ex,{...g,id:ex.id});delete ex.seeded}else if(!ex.target&&g.target)ex.target=g.target});setupApplied=true}
         if(Array.isArray(sd.oneoff)){const ids=new Set(sd.oneoff);monthKeys().forEach(k=>{docs[k].items=items(k).map(i=>ids.has(i.id)?{...i,oneoff:true}:i)});setupApplied=true}
-      }else if(o.kind==="kc-vault"){toast(t("That's a backup. Use Restore a backup instead."));return}else bad++}catch(_){bad++}}
+      }else if(o.kind==="kc-vault"){toast(t("That's a backup. Use Restore a backup instead."));return}else if(o.kind==="kc-readable"){toast(t("That's a readable export for checking. It can't be imported; use Restore a backup instead."));return}else bad++}catch(_){bad++}}
     else if(/^\s*KCPAY/im.test(tx))payFile.push(...payFromText(tx,f.lastModified));
     else csvs.push({name:f.name,text:tx})}
   // work out each file's format and columns

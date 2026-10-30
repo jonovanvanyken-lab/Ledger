@@ -1076,6 +1076,11 @@ window.KC_CS={
 "Other entries from {s}": "Další záznamy od {s}",
 "You have {n} more {e} from {s} in {c}. Move them to {d} as well?": "Máte ještě {n} {e} od {s} v kategorii {c}. Přesunout je také do {d}?",
 "Not counted": "Nezapočteno",
-"Kč Ledger · version 22": "Kč Ledger · verze 22"
+"Export all data": "Exportovat všechna data",
+"About exports": "O exportech",
+"Export all data saves one readable file with every entry, your budgets, bills, goals and this month's figures, for checking or keeping. Images, passcodes and access tokens are never included. The file is not encrypted: keep it private, never upload it to GitHub, and delete it when you're done.": "Exportovat všechna data uloží jeden čitelný soubor se všemi záznamy, rozpočty, platbami, cíli a čísly za tento měsíc, pro kontrolu nebo archiv. Obrázky, hesla a přístupové tokeny nikdy neobsahuje. Soubor není šifrovaný: uchovejte ho v soukromí, nikdy ho nenahrávejte na GitHub a po použití ho smažte.",
+"This file is not encrypted. Delete it once you're done with it.": "Tento soubor není šifrovaný. Po použití ho smažte.",
+"That's a readable export for checking. It can't be imported; use Restore a backup instead.": "To je čitelný export pro kontrolu. Nelze ho importovat; použijte Obnovit zálohu.",
+"Kč Ledger · version 23": "Kč Ledger · verze 23"
 };
 window.KC_PL={"item": {"en": ["item", "items"], "cs": ["položka", "položky", "položek"]}, "own account": {"en": ["own account", "own accounts"], "cs": ["vlastní účet", "vlastní účty", "vlastních účtů"]}, "day": {"en": ["day", "days"], "cs": ["den", "dny", "dní"]}, "payment": {"en": ["payment", "payments"], "cs": ["platba", "platby", "plateb"]}, "image": {"en": ["image", "images"], "cs": ["obrázek", "obrázky", "obrázků"]}, "entry": {"en": ["entry", "entries"], "cs": ["položka", "položky", "položek"]}, "transaction": {"en": ["transaction", "transactions"], "cs": ["transakce", "transakce", "transakcí"]}, "category": {"en": ["category", "categories"], "cs": ["kategorie", "kategorie", "kategorií"]}};
