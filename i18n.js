@@ -1068,8 +1068,6 @@ window.KC_CS={
 "{n} left out of your monthly income.": "{n} vynecháno z měsíčního příjmu.",
 "All counted in your monthly income.": "Vše započteno do měsíčního příjmu.",
 "Count these in your monthly income?": "Započítat do měsíčního příjmu?",
-"Some money came in that isn't your regular pay. Tick the ones that should count towards your monthly income. Unticked ones stay in your records but are left out of the total.": "Přišly peníze, které nejsou vaší pravidelnou výplatou. Zaškrtněte ty, které se mají počítat do měsíčního příjmu. Nezaškrtnuté zůstanou v záznamech, ale do součtu se nepočítají.",
-"These aren't your regular pay. Tick the ones that should count towards your monthly income. Unticked ones stay in your records but are left out of the total.": "Toto nejsou vaše pravidelné výplaty. Zaškrtněte ty, které se mají počítat do měsíčního příjmu. Nezaškrtnuté zůstanou v záznamech, ale do součtu se nepočítají.",
 "Move all {n}": "Přesunout všech {n}",
 "Just this one": "Jen tento",
 "{n} more moved to {c}.": "Dalších {n} přesunuto do {c}.",
@@ -1081,6 +1079,11 @@ window.KC_CS={
 "Export all data saves one readable file with every entry, your budgets, bills, goals and this month's figures, for checking or keeping. Images, passcodes and access tokens are never included. The file is not encrypted: keep it private, never upload it to GitHub, and delete it when you're done.": "Exportovat všechna data uloží jeden čitelný soubor se všemi záznamy, rozpočty, platbami, cíli a čísly za tento měsíc, pro kontrolu nebo archiv. Obrázky, hesla a přístupové tokeny nikdy neobsahuje. Soubor není šifrovaný: uchovejte ho v soukromí, nikdy ho nenahrávejte na GitHub a po použití ho smažte.",
 "This file is not encrypted. Delete it once you're done with it.": "Tento soubor není šifrovaný. Po použití ho smažte.",
 "That's a readable export for checking. It can't be imported; use Restore a backup instead.": "To je čitelný export pro kontrolu. Nelze ho importovat; použijte Obnovit zálohu.",
-"Kč Ledger · version 24": "Kč Ledger · verze 24"
+"Counted": "Započteno",
+"Left out": "Vynecháno",
+"Save: {a} counted, {b} left out": "Uložit: {a} započteno, {b} vynecháno",
+"Some money came in that isn't your regular pay. Tick a payment to count it in your monthly income. Leave it unticked to leave it out: it stays in your records but not in the total.": "Přišly peníze, které nejsou vaší pravidelnou výplatou. Zaškrtněte platbu, kterou chcete započítat do měsíčního příjmu. Nezaškrtnutá se vynechá: zůstane v záznamech, ale ne v součtu.",
+"These aren't your regular pay. Tick a payment to count it in your monthly income. Leave it unticked to leave it out: it stays in your records but not in the total.": "Toto nejsou vaše pravidelné výplaty. Zaškrtněte platbu, kterou chcete započítat do měsíčního příjmu. Nezaškrtnutá se vynechá: zůstane v záznamech, ale ne v součtu.",
+"Kč Ledger · version 24.5": "Kč Ledger · verze 24.5"
 };
 window.KC_PL={"item": {"en": ["item", "items"], "cs": ["položka", "položky", "položek"]}, "own account": {"en": ["own account", "own accounts"], "cs": ["vlastní účet", "vlastní účty", "vlastních účtů"]}, "day": {"en": ["day", "days"], "cs": ["den", "dny", "dní"]}, "payment": {"en": ["payment", "payments"], "cs": ["platba", "platby", "plateb"]}, "image": {"en": ["image", "images"], "cs": ["obrázek", "obrázky", "obrázků"]}, "entry": {"en": ["entry", "entries"], "cs": ["položka", "položky", "položek"]}, "transaction": {"en": ["transaction", "transactions"], "cs": ["transakce", "transakce", "transakcí"]}, "category": {"en": ["category", "categories"], "cs": ["kategorie", "kategorie", "kategorií"]}};

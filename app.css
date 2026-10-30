@@ -732,3 +732,7 @@ details.fold[open]>summary{margin-bottom:12px}
 .fund-spark .area{fill:color-mix(in srgb,var(--accent) 14%,transparent);stroke:none}
 #invNote:empty{display:none}
 .fund-top b{white-space:nowrap}
+.inc-right{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.inc-state{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.inc-state.on{color:var(--ok)}.inc-state.off{color:var(--muted)}
+.big-row.counted{border-color:color-mix(in srgb,var(--ok) 55%,var(--line))}

@@ -3,7 +3,7 @@
    A random data key encrypts the ledger and images. That key is stored wrapped by your passcode
    (PBKDF2-SHA256, 600k rounds → AES-GCM) and, if you turn it on, by a Face ID passkey (WebAuthn PRF → HKDF → AES-GCM). */
 "use strict";
-const ITER=600000,DAY=864e5,APP_VERSION=24;
+const ITER=600000,DAY=864e5,APP_VERSION=24.5;
 const $=id=>document.getElementById(id);
 const te=new TextEncoder(),td=new TextDecoder();
 const b64=buf=>{let s="";const b=buf instanceof Uint8Array?buf:new Uint8Array(buf);for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)};
@@ -2304,21 +2304,26 @@ function askIncome(ids,startup){
   if(!list.length)return;if(!$("sheet").hidden){setTimeout(()=>askIncome(ids,startup),1500);return}
   const rows=el("div","big-list");
   list.forEach(({k,i})=>{const l=el("label","big-row");const c=el("input");c.type="checkbox";c.checked=false;c.dataset.k=k;c.dataset.id=i.id;
-    const tx=el("span","bt");tx.append(el("b","",i.note||i.cat),el("small","",dShort(i.date)+" · "+i.cat));l.append(c,tx,el("span","amt","+"+fmt(i.czk)));rows.appendChild(l)});
+    const tx=el("span","bt");tx.append(el("b","",i.note||i.cat),el("small","",dShort(i.date)+" · "+i.cat));
+    const right=el("span","inc-right");const st2=el("span","inc-state");right.append(el("span","amt","+"+fmt(i.czk)),st2);l.append(c,tx,right);rows.appendChild(l);
+    const show=()=>{st2.textContent=c.checked?t("Counted"):t("Left out");st2.className="inc-state "+(c.checked?"on":"off");l.classList.toggle("counted",c.checked);upd()};c.addEventListener("change",show);l._show=show});
   const remember=chk(t("Remember my choice for these payers"),true);
   const ok=el("button","primary",t("Save"));ok.type="button";let done=false;
+  function upd(){const all=[...rows.querySelectorAll("input")];const n=all.filter(c=>c.checked).length;ok.textContent=t("Save: {a} counted, {b} left out",{a:n,b:all.length-n})}
   const finish=async(save)=>{if(done)return;done=true;const st=ensureSettings();st.incRules=st.incRules||{};
     [...rows.querySelectorAll("input")].forEach(c=>{const k=c.dataset.k,id=c.dataset.id;const count=save?c.checked:true;
       docs[k].items=items(k).map(x=>{if(x.id!==id)return x;const n={...x,incAsk:true};if(count)delete n.noInc;else n.noInc=true;if(save&&remember.input.checked)st.incRules[payerKey(x)]=count;return n})});
     await persist();render()};
   ok.addEventListener("click",async()=>{sheetClosed=null;await finish(true);closeSheet();const left=[...rows.querySelectorAll("input")].filter(c=>!c.checked).length;
     toast(left?t("{n} left out of your monthly income.",{n:left}):t("All counted in your monthly income."))});
-  sheetClosed=()=>{done=true};
-  openSheet(t("Count these in your monthly income?"),[el("p","small",startup?t("Some money came in that isn't your regular pay. Tick the ones that should count towards your monthly income. Unticked ones stay in your records but are left out of the total."):t("These aren't your regular pay. Tick the ones that should count towards your monthly income. Unticked ones stay in your records but are left out of the total.")),
+  sheetClosed=()=>{done=true};[...rows.children].forEach(r=>r._show&&r._show());
+  openSheet(t("Count these in your monthly income?"),[el("p","small",startup?t("Some money came in that isn't your regular pay. Tick a payment to count it in your monthly income. Leave it unticked to leave it out: it stays in your records but not in the total."):t("These aren't your regular pay. Tick a payment to count it in your monthly income. Leave it unticked to leave it out: it stays in your records but not in the total.")),
     rows,remember,ok,el("p","fine",t("You can change this later on any entry."))]);
 }
 // once after updating, and whenever the app opens with new extra income in this or last period
 function askIncomeStartup(){if(!key)return;const st=ensureSettings();
+  // 24.5: start the extra-income choices afresh once (clearer question), including remembered payers
+  if(!st.incReset245){st.incReset245=1;st.incReask=1;st.incRules={};monthKeys().forEach(k=>{docs[k].items=items(k).map(i=>i.type==="income"&&(i.incAsk||i.noInc)&&!incomeRegular(i)?(({incAsk,noInc,...r})=>r)(i):i)});persist()}
   if(!st.incReask){st.incReask=1;const rules=st.incRules||{};monthKeys().forEach(k=>{docs[k].items=items(k).map(i=>i.type==="income"&&i.incAsk&&!i.noInc&&rules[payerKey(i)]===undefined&&!incomeRegular(i)?(({incAsk,...r})=>r)(i):i)});persist()}const p=curP(),q=shiftP(p,-1);const ids=allItems().filter(({i})=>i.date>=q.s&&i.date<=p.e).map(({i})=>i.id);askIncome(ids,true)}
 
 /* ---------- category changes: also move the other entries from the same shop ---------- */
