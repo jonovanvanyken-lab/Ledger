@@ -3,7 +3,7 @@
    A random data key encrypts the ledger and images. That key is stored wrapped by your passcode
    (PBKDF2-SHA256, 600k rounds → AES-GCM) and, if you turn it on, by a Face ID passkey (WebAuthn PRF → HKDF → AES-GCM). */
 "use strict";
-const ITER=600000,DAY=864e5,APP_VERSION=21;
+const ITER=600000,DAY=864e5,APP_VERSION=22;
 const $=id=>document.getElementById(id);
 const te=new TextEncoder(),td=new TextDecoder();
 const b64=buf=>{let s="";const b=buf instanceof Uint8Array?buf:new Uint8Array(buf);for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)};
@@ -145,7 +145,7 @@ async function showApp(){
   $("wizard").hidden=true;$("app").hidden=false;cur=periodOfDate(new Date());$("fDate").value=defaultDate();
   if(docs.settings.hideOnOpen)setPrivate(true);
   if(await runAuto())await persist();
-  showTab("health");render();armIdle();updateRates(false);syncSoon(800);setTimeout(()=>payCheck(false),1200);setTimeout(()=>fundPrices(false),2500);
+  showTab("health");render();armIdle();updateRates(false);syncSoon(800);setTimeout(()=>payCheck(false),1200);setTimeout(()=>fundPrices(false),2500);setTimeout(askIncomeStartup,3000);
 }
 function lock(){
   try{showQuote()}catch(_){}
@@ -240,10 +240,10 @@ function allItems(){const out=[];monthKeys().forEach(k=>items(k).forEach(i=>out.
 function allIds(){return new Set(allItems().map(x=>x.i.id))}
 function partsOf(i){return i.type==="expense"&&Array.isArray(i.parts)&&i.parts.length?i.parts:[{cat:i.cat,czk:Number(i.czk)||0}]}
 function totalsList(list){
-  const tt={expense:0,oneoff:0,saving:0,income:0,fromIn:0,pot:0,billcat:0,byCat:{}};const pots=potSet(),bcs=billCatSet();
+  const tt={expense:0,oneoff:0,saving:0,income:0,fromIn:0,extraIn:0,pot:0,billcat:0,byCat:{}};const pots=potSet(),bcs=billCatSet();
   list.forEach(i=>{const v=Number(i.czk)||0;
     if(i.type==="expense"){if(i.oneoff){tt.oneoff+=v;return}tt.expense+=v;partsOf(i).forEach(p=>{const c=Number(p.czk)||0;tt.byCat["expense:"+p.cat]=(tt.byCat["expense:"+p.cat]||0)+c;if(pots.has(p.cat))tt.pot+=c;else if(bcs.has(p.cat))tt.billcat+=c})}
-    else if(i.type==="income"){if(i.childRepay)return;if(isTransferCat(i.cat))tt.fromIn+=v;else tt.income+=v;tt.byCat["income:"+i.cat]=(tt.byCat["income:"+i.cat]||0)+v}
+    else if(i.type==="income"){if(i.childRepay)return;if(i.noInc){tt.extraIn+=v;return}if(isTransferCat(i.cat))tt.fromIn+=v;else tt.income+=v;tt.byCat["income:"+i.cat]=(tt.byCat["income:"+i.cat]||0)+v}
     else{tt.saving+=v;tt.byCat["saving:"+i.cat]=(tt.byCat["saving:"+i.cat]||0)+v}});
   tt.everyday=tt.expense-tt.pot-tt.billcat;return tt;
 }
@@ -358,7 +358,7 @@ function render(){
   if(hc.mode==="current")$("kLeftSub").textContent=hc.left>=0?t("≈ {x} a day after bills, {n} {d} left",{x:fmt(hc.perDay),n:hc.daysLeft,d:pl(hc.daysLeft,"day")}):t("bills still to come exceed it");
   else $("kLeftSub").textContent=left<0?t("over budget"):t("at the end of the period");
   $("kSaved").textContent=fmt(tt.saving);$("kSavedOf").textContent=t("of {x} target",{x:fmt(tg)});
-  $("kIncome").textContent=fmt(tt.income);$("kIncomeSub").textContent=tt.fromIn?t("+ {x} transferred in",{x:fmt(tt.fromIn)}):t("earned this period");
+  $("kIncome").textContent=fmt(tt.income);$("kIncomeSub").textContent=[tt.fromIn?t("+ {x} transferred in",{x:fmt(tt.fromIn)}):"",tt.extraIn?t("{x} more not counted",{x:fmt(tt.extraIn)}):""].filter(Boolean).join(" · ")||t("earned this period");
   const os=$("oneoffStrip");os.hidden=!tt.oneoff;if(tt.oneoff){os.replaceChildren(el("span","",t("One-off costs, kept out of the budget")),el("b","amt",fmt(tt.oneoff)));os.onclick=()=>filterTo("__oneoff")}
   setSyncUI();renderHealth();renderBars(tt,s);renderBills();renderBanners();renderRecap();renderMerchants();renderEntries();renderGoals();renderInvest();renderAccounts();renderAU();renderBio();renderKids();renderDebts();renderJars();renderStreak();renderSalary();setTimeout(checkCelebrations,600);
   if(!$("tab-settings").dataset.dirty)fillSettings();renderRecList();
@@ -582,7 +582,7 @@ function entryRow(k,i,showMonth,grouped){
   const w=el("div");const c=el("div","c",i.type==="expense"&&i.parts&&i.parts.length?t("Split")+" · "+i.parts.map(p=>p.cat).join(", "):(i.cat||t("Uncategorised")));
   if(i.type!=="expense")c.appendChild(el("span","tag "+(i.type==="income"?"in":"sv"),i.type==="income"?t("in"):t("saved")));w.appendChild(c);
   if(i.note)w.appendChild(el("div","n",i.note));
-  const bd=el("div","badges");const cc=childCfg();
+  const bd=el("div","badges");const cc=childCfg();if(i.noInc)bd.appendChild(el("span","badge",t("Not counted")));
   if(cc&&i.child)bd.appendChild(el("span","badge kid",(cc.child||t("Child"))+" · "+(100-(+i.child.share||0))+"/"+(+i.child.share||0)));
   if(cc&&i.childRepay)bd.appendChild(el("span","badge kid",t("repayment")));
   if(i.oneoff)bd.appendChild(el("span","badge one",t("one-off")));if((i.att||[]).length)bd.appendChild(el("span","badge",i.att.length>1?i.att.length+" "+pl(i.att.length,"image"):t("image")));
@@ -626,12 +626,12 @@ function openEditor(k,id){
   const i=items(k).find(x=>x.id===id);if(!i)return;let ty=i.type;const cc=childCfg();
   const seg=el("div","seg");seg.setAttribute("role","group");seg.setAttribute("aria-label",t("Entry type"));const tb={};
   [["expense",t("Spent")],["saving",t("Saved")],["income",t("Income")]].forEach(([v,tx])=>{const b=el("button","",tx);b.type="button";b.setAttribute("aria-pressed",String(v===ty));
-    b.addEventListener("click",()=>{ty=v;Object.keys(tb).forEach(x=>tb[x].setAttribute("aria-pressed",String(x===v)));fillCat();partsWrap.hidden=ty!=="expense";oneWrap.hidden=ty!=="expense";if(kidWrap)kidWrap.hidden=ty!=="expense";if(repWrap)repWrap.hidden=ty!=="income"});tb[v]=b;seg.appendChild(b)});
+    b.addEventListener("click",()=>{ty=v;Object.keys(tb).forEach(x=>tb[x].setAttribute("aria-pressed",String(x===v)));fillCat();partsWrap.hidden=ty!=="expense";oneWrap.hidden=ty!=="expense";if(kidWrap)kidWrap.hidden=ty!=="expense";if(repWrap)repWrap.hidden=ty!=="income";incWrap.hidden=ty!=="income"});tb[v]=b;seg.appendChild(b)});
   const amt=inp(String(i.amount).replace(".",","),"","decimal"),curS=selOf(curOptions([i.cur]),i.cur||baseCur()),date=inp(i.date,"date"),note=inp(i.note||"");note.maxLength=80;
   const cat=el("select");const fillCat=()=>{const list=catsOf(ty);const v=cat.value||i.cat;cat.replaceChildren(...list.map(c=>el("option","",c)));cat.value=list.includes(v)?v:list[0]};fillCat();
   const r1=el("div","row2");r1.append(fld(t("Amount"),amt),fld(t("Currency"),curS));const r2=el("div","row2 row2-date");r2.append(fld(t("Note"),note),fld(t("Date"),date));const tm=inp(i.time||"","time");
   const oneWrap=chk(t("One-off (keep out of the monthly budget)"),i.oneoff);oneWrap.hidden=ty!=="expense";const one=oneWrap.input;
-  let kidWrap=null,kidOn=null,kidShare=null,repWrap=null;
+  let kidWrap=null,kidOn=null,kidShare=null,repWrap=null;const incWrap=chk(t("Count in my monthly income"),!i.noInc);incWrap.hidden=ty!=="income";
   if(cc){kidWrap=el("div","sub-sec kidbox");const kc=chk(t("For {c}",{c:cc.child||t("my child")}),!!i.child);kidOn=kc.input;
     kidShare=selOf(Array.from({length:21},(_,n)=>[String(n*5),t("{o} pays {p} %",{o:cc.other||t("The other parent"),p:n*5})]),String(i.child?+i.child.share:+cc.share||50));
     const sf=fld(t("Split"),kidShare);sf.hidden=!kidOn.checked;kidOn.addEventListener("change",()=>sf.hidden=!kidOn.checked);kidWrap.append(kc,sf);kidWrap.hidden=ty!=="expense";
@@ -660,17 +660,17 @@ function openEditor(k,id){
     const n2={...i,type:ty,amount:a,cur:c,czk:base,date:dt,time:tm.value||"",note:note.value.trim().slice(0,80),cat:cat.value,oneoff:ty==="expense"&&one.checked};
     if(!n2.time)delete n2.time;if(i.src==="auto"){n2.src="hand";delete n2.rec;(docs.autoSkip=docs.autoSkip||{})[i.id]=1;n2.id=uid("e")}
     if(ty==="expense"&&plist.length>1){n2.parts=plist;n2.cat=plist.slice().sort((x,y)=>y.czk-x.czk)[0].cat}else delete n2.parts;
-    if(!n2.oneoff)delete n2.oneoff;if(c!==i.cur||a!==i.amount){if(c===baseCur())delete n2.orig;else n2.orig=a+" "+c}
+    if(!n2.oneoff)delete n2.oneoff;if(ty==="income"){n2.incAsk=true;if(incWrap.input.checked)delete n2.noInc;else n2.noInc=true}else{delete n2.noInc}if(c!==i.cur||a!==i.amount){if(c===baseCur())delete n2.orig;else n2.orig=a+" "+c}
     if(cc){if(ty==="expense"&&kidOn.checked){n2.child={share:+kidShare.value};delete n2.childNo}else{if(i.child)n2.childNo=true;delete n2.child}
       if(ty==="income"&&repWrap.input.checked)n2.childRepay=true;else delete n2.childRepay}
     if(n2.cat!==i.cat&&(i.src==="rb"||i.src==="shot"||i.src==="csv"||i.src==="pay")&&i.key&&!n2.parts){const st=ensureSettings();st.rules=st.rules||{};st.rules[i.key]=n2.cat}
     if(cc&&kidOn&&!!i.child!==kidOn.checked)kidLearn();
     const nk="m-"+dt.slice(0,7);docs[k].items=items(k).filter(x=>x.id!==i.id);(docs[nk]=docs[nk]||{items:[]}).items=items(nk).concat(n2);
-    await persist();closeSheet();toast(t("Saved."));render()});
+    await persist();closeSheet();toast(t("Saved."));render();offerSameShop(i,n2)});
   del.addEventListener("click",async()=>{if(!del.classList.contains("confirm")){del.classList.add("confirm");del.textContent=t("Tap again to delete");return}
     docs[k].items=items(k).filter(x=>x.id!==i.id);if(i.src==="auto")(docs.autoSkip=docs.autoSkip||{})[i.id]=1;await persist();await dropUnused(i.att);closeSheet();toast(t("Entry deleted"));render()});
   const meta=el("p","fine",(i.src==="rb"?t("From your Raiffeisen export"):i.src==="csv"?t("From a bank export"):i.src==="shot"?t("From a screenshot"):i.src==="pay"?t("From Apple Pay, until the bank export arrives"):i.src==="auto"?t("Added automatically from a recurring item"):t("Added by hand"))+(i.orig?" · "+t("original amount {x}",{x:i.orig}):""));
-  openSheet(t("Edit entry"),[seg,r1,fld(t("Category"),cat),r2,fld(t("Time"),tm),oneWrap,kidWrap,repWrap,partsWrap,imgs,meta,row,hint].filter(Boolean));
+  openSheet(t("Edit entry"),[seg,r1,fld(t("Category"),cat),r2,fld(t("Time"),tm),oneWrap,incWrap,kidWrap,repWrap,partsWrap,imgs,meta,row,hint].filter(Boolean));
 }
 
 /* ---------- add entry, header controls ---------- */
@@ -1169,7 +1169,7 @@ async function handleImport(files){
   await persist();applyCats();render();
   if(setupApplied&&!added&&!dupes&&!csvs.length){toast(t("Your setup was applied. Delete the setup file from your device."));return}
   toast((starter?t("Starter loaded.")+" ":"")+t("Added {n} {e}",{n:added,e:pl(added,"entry")})+(dupes?", "+t("{n} already here",{n:dupes}):"")+(transfers?", "+t("{n} left out (transfers between your accounts or unfinished payments)",{n:transfers}):"")+(merged?", "+t("{n} matched to automatic, screenshot or Apple Pay entries",{n:merged}):"")+(noRate?". "+t("{n} skipped: set their currency's exchange rate first",{n:noRate}):"")+".");
-  if(addedIds.length)setTimeout(()=>askOneoffs(addedIds),400);
+  if(addedIds.length){setTimeout(()=>askOneoffs(addedIds),400);setTimeout(()=>askIncome(addedIds),900)}
 }
 
 /* ---------- images: compressed, encrypted, stored apart from the ledger ---------- */
@@ -2269,6 +2269,50 @@ async function fundPrices(force){
   return changed;
 }
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&key)fundPrices(false)});
+
+/* ---------- extra income: count it in the monthly total or not ---------- */
+// Money in that isn't regular pay (a flatmate's share of rent, a debt repaid, a refund) can be left out of the income total.
+// i.noInc = left out; i.incAsk = already decided; settings.incRules[payer] = true (count) / false (leave out), remembered per payer.
+const payerKey=i=>"n:"+norm(i.note||"").replace(/\s+/g," ").trim();
+function incomeRegular(i){return recList().some(r=>typeOfCat(r.cat)==="income"&&recFit(r,i.date,i))||i.salary}
+function incomeCandidates(list){return list.filter(i=>i.type==="income"&&!i.childRepay&&!isTransferCat(i.cat)&&!i.incAsk&&(+i.czk||0)>=500&&!incomeRegular(i))}
+// a remembered choice for this payer is applied straight away; returns the ones still to ask about
+function incomeApplyRules(ids){
+  const st=ensureSettings(),rules=st.incRules||{};const set=ids?new Set(ids):null;const ask=[];let changed=0;
+  monthKeys().forEach(k=>{docs[k].items=items(k).map(i=>{if(set&&!set.has(i.id))return i;if(!incomeCandidates([i]).length)return i;
+    const r=rules[payerKey(i)];if(r===undefined){ask.push({k,id:i.id});return i}changed++;const n={...i,incAsk:true};if(r===false)n.noInc=true;else delete n.noInc;return n})});
+  return {ask,changed}}
+function askIncome(ids,startup){
+  if(!key)return;const {ask,changed}=incomeApplyRules(ids);if(changed){persist().then(render)}
+  const list=ask.map(x=>({k:x.k,i:items(x.k).find(y=>y.id===x.id)})).filter(x=>x.i).sort((a,b)=>a.i.date.localeCompare(b.i.date)).slice(-12);
+  if(!list.length)return;if(!$("sheet").hidden){setTimeout(()=>askIncome(ids,startup),1500);return}
+  const rows=el("div","big-list");
+  list.forEach(({k,i})=>{const l=el("label","big-row");const c=el("input");c.type="checkbox";c.checked=false;c.dataset.k=k;c.dataset.id=i.id;
+    const tx=el("span","bt");tx.append(el("b","",i.note||i.cat),el("small","",dShort(i.date)+" · "+i.cat));l.append(c,tx,el("span","amt","+"+fmt(i.czk)));rows.appendChild(l)});
+  const remember=chk(t("Remember my choice for these payers"),true);
+  const ok=el("button","primary",t("Save"));ok.type="button";let done=false;
+  const finish=async(save)=>{if(done)return;done=true;const st=ensureSettings();st.incRules=st.incRules||{};
+    [...rows.querySelectorAll("input")].forEach(c=>{const k=c.dataset.k,id=c.dataset.id;const count=save?c.checked:true;
+      docs[k].items=items(k).map(x=>{if(x.id!==id)return x;const n={...x,incAsk:true};if(count)delete n.noInc;else n.noInc=true;if(save&&remember.input.checked)st.incRules[payerKey(x)]=count;return n})});
+    await persist();render()};
+  ok.addEventListener("click",async()=>{sheetClosed=null;await finish(true);closeSheet();const left=[...rows.querySelectorAll("input")].filter(c=>!c.checked).length;
+    toast(left?t("{n} left out of your monthly income.",{n:left}):t("All counted in your monthly income."))});
+  sheetClosed=()=>{finish(false)};
+  openSheet(t("Count these in your monthly income?"),[el("p","small",startup?t("Some money came in that isn't your regular pay. Tick the ones that should count towards your monthly income. Unticked ones stay in your records but are left out of the total."):t("These aren't your regular pay. Tick the ones that should count towards your monthly income. Unticked ones stay in your records but are left out of the total.")),
+    rows,remember,ok,el("p","fine",t("You can change this later on any entry."))]);
+}
+// once after updating, and whenever the app opens with new extra income in this or last period
+function askIncomeStartup(){if(!key)return;const p=curP(),q=shiftP(p,-1);const ids=allItems().filter(({i})=>i.date>=q.s&&i.date<=p.e).map(({i})=>i.id);askIncome(ids,true)}
+
+/* ---------- category changes: also move the other entries from the same shop ---------- */
+function offerSameShop(old,n2){
+  if(!old||n2.cat===old.cat||n2.parts)return;const kk=old.key,nm=norm(old.note||"");
+  const same=allItems().filter(({i})=>i.id!==old.id&&i.type===old.type&&i.cat===old.cat&&!i.parts&&((kk&&i.key===kk)||(nm&&norm(i.note||"")===nm)));
+  if(!same.length)return;
+  setTimeout(()=>{if(!$("sheet").hidden)return;const yes=el("button","primary",t("Move all {n}",{n:same.length}));yes.type="button";const no=el("button","icon-btn",t("Just this one"));no.type="button";
+    yes.addEventListener("click",async()=>{const ids=new Set(same.map(x=>x.i.id));monthKeys().forEach(k=>{docs[k].items=items(k).map(i=>ids.has(i.id)?{...i,cat:n2.cat}:i)});await persist();closeSheet();render();toast(t("{n} more moved to {c}.",{n:same.length,c:n2.cat}))});
+    no.addEventListener("click",()=>closeSheet());const row=el("div","btnrow wrap");row.append(yes,no);
+    openSheet(t("Other entries from {s}",{s:old.note||old.cat}),[el("p","small",t("You have {n} more {e} from {s} in {c}. Move them to {d} as well?",{n:same.length,e:pl(same.length,"entry"),s:old.note||"",c:old.cat,d:n2.cat})),row])},350)}
 
 /* ---------- salary check-in ---------- */
 // The salary is the largest monthly recurring income item. "Salary arrived" records what actually came in.

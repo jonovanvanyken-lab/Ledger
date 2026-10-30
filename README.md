@@ -71,6 +71,11 @@ Text recognition: tesseract.js (Apache 2.0). PDF statements: jsPDF (MIT) with a 
 - **Display** (Settings) switches each chart and graphic on or off, plus animations and celebrations. Empty sections hide themselves.
 - New: one-off check after imports, spending alerts, Year in review, Owed & owing, money-flow chart, pot and goal jars, celebrations and the under-budget streak.
 
+## Version 22
+
+- **Extra income:** money in that isn't your regular pay (a flatmate's rent share, a debt repaid) can be left out of your monthly income. The app asks when you open it and after imports, can remember your choice per payer, and marks those entries "Not counted". Change it any time on the entry.
+- **Same shop, one change:** recategorise one entry and the app offers to move the other entries from that shop too.
+
 ## Version 21
 
 - **Fix: bills counted twice after a bank import.** A bank payment now replaces the bill the app added automatically when it has the same amount (even with no description, like a rent transfer), or when it's in the bill's category within 10 days (phone and energy bills vary). Entries already doubled are cleaned up when you open this version, and a same-amount rent transfer takes the Rent category.

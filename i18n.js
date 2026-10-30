@@ -1062,6 +1062,20 @@ window.KC_CS={
 "Read from your screenshot. Check the numbers and save to start tracking this fund.": "Načteno ze snímku obrazovky. Zkontrolujte čísla a uložením začnete fond sledovat.",
 "+ Add fund": "+ Přidat fond",
 "Price {x} on {d} · updates daily from Raiffeisenbank": "Cena {x} dne {d} · denně z Raiffeisenbank",
-"Kč Ledger · version 21": "Kč Ledger · verze 21"
+"{x} more not counted": "dalších {x} nezapočteno",
+"Count in my monthly income": "Započítat do mého měsíčního příjmu",
+"Remember my choice for these payers": "Zapamatovat si volbu pro tyto plátce",
+"{n} left out of your monthly income.": "{n} vynecháno z měsíčního příjmu.",
+"All counted in your monthly income.": "Vše započteno do měsíčního příjmu.",
+"Count these in your monthly income?": "Započítat do měsíčního příjmu?",
+"Some money came in that isn't your regular pay. Tick the ones that should count towards your monthly income. Unticked ones stay in your records but are left out of the total.": "Přišly peníze, které nejsou vaší pravidelnou výplatou. Zaškrtněte ty, které se mají počítat do měsíčního příjmu. Nezaškrtnuté zůstanou v záznamech, ale do součtu se nepočítají.",
+"These aren't your regular pay. Tick the ones that should count towards your monthly income. Unticked ones stay in your records but are left out of the total.": "Toto nejsou vaše pravidelné výplaty. Zaškrtněte ty, které se mají počítat do měsíčního příjmu. Nezaškrtnuté zůstanou v záznamech, ale do součtu se nepočítají.",
+"Move all {n}": "Přesunout všech {n}",
+"Just this one": "Jen tento",
+"{n} more moved to {c}.": "Dalších {n} přesunuto do {c}.",
+"Other entries from {s}": "Další záznamy od {s}",
+"You have {n} more {e} from {s} in {c}. Move them to {d} as well?": "Máte ještě {n} {e} od {s} v kategorii {c}. Přesunout je také do {d}?",
+"Not counted": "Nezapočteno",
+"Kč Ledger · version 22": "Kč Ledger · verze 22"
 };
 window.KC_PL={"item": {"en": ["item", "items"], "cs": ["položka", "položky", "položek"]}, "own account": {"en": ["own account", "own accounts"], "cs": ["vlastní účet", "vlastní účty", "vlastních účtů"]}, "day": {"en": ["day", "days"], "cs": ["den", "dny", "dní"]}, "payment": {"en": ["payment", "payments"], "cs": ["platba", "platby", "plateb"]}, "image": {"en": ["image", "images"], "cs": ["obrázek", "obrázky", "obrázků"]}, "entry": {"en": ["entry", "entries"], "cs": ["položka", "položky", "položek"]}, "transaction": {"en": ["transaction", "transactions"], "cs": ["transakce", "transakce", "transakcí"]}, "category": {"en": ["category", "categories"], "cs": ["kategorie", "kategorie", "kategorií"]}};
