@@ -3,7 +3,7 @@
    A random data key encrypts the ledger and images. That key is stored wrapped by your passcode
    (PBKDF2-SHA256, 600k rounds → AES-GCM) and, if you turn it on, by a Face ID passkey (WebAuthn PRF → HKDF → AES-GCM). */
 "use strict";
-const ITER=600000,DAY=864e5,APP_VERSION=23;
+const ITER=600000,DAY=864e5,APP_VERSION=24;
 const $=id=>document.getElementById(id);
 const te=new TextEncoder(),td=new TextDecoder();
 const b64=buf=>{let s="";const b=buf instanceof Uint8Array?buf:new Uint8Array(buf);for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)};
@@ -2313,12 +2313,13 @@ function askIncome(ids,startup){
     await persist();render()};
   ok.addEventListener("click",async()=>{sheetClosed=null;await finish(true);closeSheet();const left=[...rows.querySelectorAll("input")].filter(c=>!c.checked).length;
     toast(left?t("{n} left out of your monthly income.",{n:left}):t("All counted in your monthly income."))});
-  sheetClosed=()=>{finish(false)};
+  sheetClosed=()=>{done=true};
   openSheet(t("Count these in your monthly income?"),[el("p","small",startup?t("Some money came in that isn't your regular pay. Tick the ones that should count towards your monthly income. Unticked ones stay in your records but are left out of the total."):t("These aren't your regular pay. Tick the ones that should count towards your monthly income. Unticked ones stay in your records but are left out of the total.")),
     rows,remember,ok,el("p","fine",t("You can change this later on any entry."))]);
 }
 // once after updating, and whenever the app opens with new extra income in this or last period
-function askIncomeStartup(){if(!key)return;const p=curP(),q=shiftP(p,-1);const ids=allItems().filter(({i})=>i.date>=q.s&&i.date<=p.e).map(({i})=>i.id);askIncome(ids,true)}
+function askIncomeStartup(){if(!key)return;const st=ensureSettings();
+  if(!st.incReask){st.incReask=1;const rules=st.incRules||{};monthKeys().forEach(k=>{docs[k].items=items(k).map(i=>i.type==="income"&&i.incAsk&&!i.noInc&&rules[payerKey(i)]===undefined&&!incomeRegular(i)?(({incAsk,...r})=>r)(i):i)});persist()}const p=curP(),q=shiftP(p,-1);const ids=allItems().filter(({i})=>i.date>=q.s&&i.date<=p.e).map(({i})=>i.id);askIncome(ids,true)}
 
 /* ---------- category changes: also move the other entries from the same shop ---------- */
 function offerSameShop(old,n2){

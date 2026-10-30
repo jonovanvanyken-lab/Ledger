@@ -71,6 +71,10 @@ Text recognition: tesseract.js (Apache 2.0). PDF statements: jsPDF (MIT) with a 
 - **Display** (Settings) switches each chart and graphic on or off, plus animations and celebrations. Empty sections hide themselves.
 - New: one-off check after imports, spending alerts, Year in review, Owed & owing, money-flow chart, pot and goal jars, celebrations and the under-budget streak.
 
+## Version 24
+
+- Closing the "Count these in your monthly income?" question no longer counts the payments. It asks again next time, and payments that were only closed get asked once more.
+
 ## Version 23
 
 - **Export all data** (Settings → Backup): one readable file with every entry (including the bank's transaction number), your budgets, bills, goals, funds and this month's figures. No images, passcodes or tokens. Not encrypted, so keep it private and delete it when done.
