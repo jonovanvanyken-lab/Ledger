@@ -1062,6 +1062,6 @@ window.KC_CS={
 "Read from your screenshot. Check the numbers and save to start tracking this fund.": "Načteno ze snímku obrazovky. Zkontrolujte čísla a uložením začnete fond sledovat.",
 "+ Add fund": "+ Přidat fond",
 "Price {x} on {d} · updates daily from Raiffeisenbank": "Cena {x} dne {d} · denně z Raiffeisenbank",
-"Kč Ledger · version 20": "Kč Ledger · verze 20"
+"Kč Ledger · version 21": "Kč Ledger · verze 21"
 };
 window.KC_PL={"item": {"en": ["item", "items"], "cs": ["položka", "položky", "položek"]}, "own account": {"en": ["own account", "own accounts"], "cs": ["vlastní účet", "vlastní účty", "vlastních účtů"]}, "day": {"en": ["day", "days"], "cs": ["den", "dny", "dní"]}, "payment": {"en": ["payment", "payments"], "cs": ["platba", "platby", "plateb"]}, "image": {"en": ["image", "images"], "cs": ["obrázek", "obrázky", "obrázků"]}, "entry": {"en": ["entry", "entries"], "cs": ["položka", "položky", "položek"]}, "transaction": {"en": ["transaction", "transactions"], "cs": ["transakce", "transakce", "transakcí"]}, "category": {"en": ["category", "categories"], "cs": ["kategorie", "kategorie", "kategorií"]}};

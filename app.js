@@ -3,7 +3,7 @@
    A random data key encrypts the ledger and images. That key is stored wrapped by your passcode
    (PBKDF2-SHA256, 600k rounds → AES-GCM) and, if you turn it on, by a Face ID passkey (WebAuthn PRF → HKDF → AES-GCM). */
 "use strict";
-const ITER=600000,DAY=864e5,APP_VERSION=20;
+const ITER=600000,DAY=864e5,APP_VERSION=21;
 const $=id=>document.getElementById(id);
 const te=new TextEncoder(),td=new TextDecoder();
 const b64=buf=>{let s="";const b=buf instanceof Uint8Array?buf:new Uint8Array(buf);for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)};
@@ -834,12 +834,19 @@ function occurrences(r,from,to){
 }
 const atTime=(r,dIso)=>{const [hh,mm]=(r.time||"09:00").split(":").map(Number);const x=dOf(dIso);x.setHours(hh||0,mm||0,0,0);return x};
 function recWords(r){return String(r.match||r.name).toLowerCase().split(/[,|]/).map(w=>w.trim()).filter(Boolean)}
+// does a real entry i stand for occurrence dIso of recurring item r?
+//  - same amount (within 1 %) within 4 days, whatever the description (a rent transfer often has no name);
+//  - the usual rule: about the same amount (±10 %) within 4 days, with the bill's category or name;
+//  - bills vary (phone, energy): a payment in the bill's own category within 10 days, whatever the amount.
+function recFit(r,dIso,i){
+  const amt=recCzk(r),ty=typeOfCat(r.cat);if(!i||i.type!==ty||i.src==="auto")return null;const days=Math.abs(dOf(i.date).getTime()-dOf(dIso).getTime())/DAY;const v=+i.czk||0,diff=Math.abs(v-amt);
+  if(days<=4&&diff<=Math.max(1,amt*.01))return {how:"exact",score:diff+days};
+  const words=recWords(r),named=i.cat===r.cat||words.some(w=>((i.note||"")+" "+(i.cat||"")).toLowerCase().includes(w));
+  if(named&&days<=4&&diff<=Math.max(amt*.1,50))return {how:"named",score:diff+days+1};
+  if(ty==="expense"&&i.cat===r.cat&&billCatSet().has(r.cat)&&days<=10&&v>0)return {how:"bill",score:diff+days*10+1000};
+  return null}
 function recMatch(r,dIso,pool,used){
-  const amt=recCzk(r),tol=Math.max(amt*.1,50),ty=typeOfCat(r.cat),words=recWords(r),t0=dOf(dIso).getTime();
-  return pool.filter(i=>!(used&&used.has(i.id))&&i.type===ty&&Math.abs(dOf(i.date).getTime()-t0)<=4*DAY&&Math.abs((+i.czk||0)-amt)<=tol&&
-    (i.cat===r.cat||words.some(w=>((i.note||"")+" "+(i.cat||"")).toLowerCase().includes(w))))
-    .sort((a,b)=>(a.src==="auto")-(b.src==="auto")||Math.abs((+a.czk||0)-amt)-Math.abs((+b.czk||0)-amt))[0]||null;
-}
+  let best=null,bs=Infinity;pool.forEach(i=>{if(used&&used.has(i.id))return;const f=recFit(r,dIso,i);if(f&&f.score<bs){bs=f.score;best=i}});return best}
 const autoId=(r,dIso)=>"auto-"+r.id+"-"+dIso;
 async function runAuto(){
   if(!key||!docs.settings)return 0;const nowD=new Date();const skip=docs.autoSkip||(docs.autoSkip={});const have=allIds();let added=0;
@@ -849,11 +856,23 @@ async function runAuto(){
       if(recMatch(r,dIso,pool)){skip[id]=1;return}
       const ty=typeOfCat(r.cat);const it={id,type:ty,cat:r.cat,amount:+r.amount||0,cur:r.cur||baseCur(),czk:Math.round(recCzk(r)*100)/100,note:r.name,date:dIso,time:r.time||"",ts:0,src:"auto",rec:r.id};
       if((r.cur||baseCur())!==baseCur())it.orig=r.amount+" "+r.cur;if(r.child&&ty==="expense"&&childCfg())it.child={share:+r.child.share};const k="m-"+dIso.slice(0,7);(docs[k]=docs[k]||{items:[]}).items=items(k).concat(it);have.add(id);added++})});
+  reconcileAuto();
   monthKeys().forEach(k=>{const before=items(k).length;docs[k].items=items(k).filter(i=>!(i.src==="auto"&&skip[i.id]));if(docs[k].items.length!==before)added++});
   return added;
 }
-function findAutoTwin(i){for(const {k,i:x} of allItems()){if(x.src!=="auto"||x.type!==i.type)continue;const r=recList().find(r=>r.id===x.rec);
-  const amt=+x.czk||0,tol=Math.max(amt*.1,50);if(Math.abs(dOf(x.date)-dOf(i.date))<=4*DAY&&Math.abs((+i.czk||0)-amt)<=tol&&(!r||i.cat===x.cat||recWords(r).some(w=>((i.note||"")+" "+(i.cat||"")).toLowerCase().includes(w))))return {k,it:x}}return null}
+function findAutoTwin(i){let best=null,bs=Infinity;for(const {k,i:x} of allItems()){if(x.src!=="auto"||x.type!==i.type)continue;const r=recList().find(r=>r.id===x.rec);
+  if(!r){const amt=+x.czk||0;if(Math.abs(dOf(x.date)-dOf(i.date))<=4*DAY&&Math.abs((+i.czk||0)-amt)<=Math.max(amt*.1,50)&&i.cat===x.cat)return {k,it:x};continue}
+  const f=recFit(r,x.date,{...i,src:i.src==="auto"?"x":i.src});if(f&&f.score<bs){bs=f.score;best={k,it:x}}}return best}
+// entries added automatically that a real payment now covers (imported earlier, before matching got smarter): drop them
+function reconcileAuto(){
+  const skip=docs.autoSkip||(docs.autoSkip={});const real=allItems().map(x=>x.i).filter(i=>i.src!=="auto");const claimed=new Set();let n=0;
+  const autos=allItems().filter(x=>x.i.src==="auto"&&!skip[x.i.id]).sort((a,b)=>a.i.date.localeCompare(b.i.date));
+  autos.forEach(({k,i:x})=>{const r=recList().find(r=>r.id===x.rec);if(!r)return;let best=null,bs=Infinity,how="";
+    real.forEach(i=>{if(claimed.has(i.id))return;const f=recFit(r,x.date,i);if(f&&f.score<bs){bs=f.score;best=i;how=f.how}});
+    if(!best)return;claimed.add(best.id);skip[x.id]=1;n++;
+    // a same-amount transfer with no useful description (e.g. rent) takes the bill's category
+    if(how==="exact"&&best.cat!==r.cat&&!best.parts&&catsOf(best.type).includes(r.cat)){const k2="m-"+best.date.slice(0,7);docs[k2].items=items(k2).map(y=>y.id===best.id?{...y,cat:r.cat}:y)}});
+  return n}
 function billStatus(p){
   const first=new Date(p.start),last=new Date(p.end);last.setHours(23,59,59,999);const used=new Set();const list=pItems(p);const out=[];const nowD=new Date();const tI=todayIso();
   recList().forEach(r=>{const ty=typeOfCat(r.cat);occurrences({...r,start:""},first,last).forEach(dIso=>{
