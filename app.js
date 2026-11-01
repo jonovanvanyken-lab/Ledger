@@ -3,7 +3,7 @@
    A random data key encrypts the ledger and images. That key is stored wrapped by your passcode
    (PBKDF2-SHA256, 600k rounds → AES-GCM) and, if you turn it on, by a Face ID passkey (WebAuthn PRF → HKDF → AES-GCM). */
 "use strict";
-const ITER=600000,DAY=864e5,APP_VERSION=24.5;
+const ITER=600000,DAY=864e5,APP_VERSION=25;
 const $=id=>document.getElementById(id);
 const te=new TextEncoder(),td=new TextDecoder();
 const b64=buf=>{let s="";const b=buf instanceof Uint8Array?buf:new Uint8Array(buf);for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)};
@@ -256,6 +256,9 @@ const everydayCzk=i=>i.type!=="expense"||i.oneoff?0:(()=>{const ps=outSet();retu
 const everydayBudget=s=>{const ps=outSet();return EXP_CATS.reduce((a,c)=>a+(ps.has(c)?0:s.budget[c]||0),0)};
 const totals=k=>totalsList(items(k));
 const budgetTotal=s=>EXP_CATS.reduce((a,c)=>a+s.budget[c],0);
+const potBudget=s=>{const ps=potSet();return EXP_CATS.reduce((a,c)=>a+(ps.has(c)?+s.budget[c]||0:0),0)};
+// own pots (travel…) are money set aside like savings: kept out of Spent and Left to spend
+const potsLeft=p=>EXP_CATS.filter(c=>potSet().has(c)).reduce((a,c)=>{const i=potInfo(c,p);return a+(i?i.left:0)},0);
 const targetTotal=s=>SAVE_CATS.reduce((a,c)=>a+s.targets[c],0);
 
 /* ---------- budget periods: calendar month, or payday to payday ---------- */
@@ -351,13 +354,14 @@ function render(){
   const cb=$("curBtn");cb.hidden=!cur2()||cur2()===baseCur();cb.textContent=SYM[dispCode()]||dispCode();cb.setAttribute("aria-label",t("Switch currency"));
   $("tabKidsBtn").hidden=!childCfg();if(childCfg())$("tabKids").textContent=childCfg().child||t("Child");
   const s=settings(),tt=totalsP(p),bt=budgetTotal(s),tg=targetTotal(s);
-  $("kSpent").textContent=fmt(tt.expense);$("kSpentOf").textContent=t("of {x}",{x:fmt(bt)});
-  const pct=bt?tt.expense/bt:0,pill=$("kSpentPill");pill.className="pill "+(pct>1?"bad":pct>.85?"warn":"ok");pill.textContent=bt?Math.round(pct*100)+"%":t("no budget");
-  const left=bt-tt.expense;$("kLeft").textContent=fmt(left);
+  const sb=bt-potBudget(s),sx=tt.expense-tt.pot;
+  $("kSpent").textContent=fmt(sx);$("kSpentOf").textContent=t("of {x}",{x:fmt(sb)});
+  const pct=sb?sx/sb:0,pill=$("kSpentPill");pill.className="pill "+(pct>1?"bad":pct>.85?"warn":"ok");pill.textContent=sb?Math.round(pct*100)+"%":t("no budget");
+  const left=sb-sx;$("kLeft").textContent=fmt(left);
   const hc=healthCalc(p);
   if(hc.mode==="current")$("kLeftSub").textContent=hc.left>=0?t("≈ {x} a day after bills, {n} {d} left",{x:fmt(hc.perDay),n:hc.daysLeft,d:pl(hc.daysLeft,"day")}):t("bills still to come exceed it");
   else $("kLeftSub").textContent=left<0?t("over budget"):t("at the end of the period");
-  $("kSaved").textContent=fmt(tt.saving);$("kSavedOf").textContent=t("of {x} target",{x:fmt(tg)});
+  $("kSaved").textContent=fmt(tt.saving);{const pl2=potsLeft(p);$("kSavedOf").textContent=t("of {x} target",{x:fmt(tg)})+(potSet().size?" · "+t("{x} in your pots",{x:fmt(pl2)}):"")}
   $("kIncome").textContent=fmt(tt.income);$("kIncomeSub").textContent=[tt.fromIn?t("+ {x} transferred in",{x:fmt(tt.fromIn)}):"",tt.extraIn?t("{x} more not counted",{x:fmt(tt.extraIn)}):""].filter(Boolean).join(" · ")||t("earned this period");
   const os=$("oneoffStrip");os.hidden=!tt.oneoff;if(tt.oneoff){os.replaceChildren(el("span","",t("One-off costs, kept out of the budget")),el("b","amt",fmt(tt.oneoff)));os.onclick=()=>filterTo("__oneoff")}
   setSyncUI();renderHealth();renderBars(tt,s);renderBills();renderBanners();renderRecap();renderMerchants();renderEntries();renderGoals();renderInvest();renderAccounts();renderAU();renderBio();renderKids();renderDebts();renderJars();renderStreak();renderSalary();setTimeout(checkCelebrations,600);
@@ -422,13 +426,15 @@ function renderBanners(){
 }
 function recapFor(p){
   const s=settings(),tt=totalsP(p),bt=budgetTotal(s),tg=targetTotal(s),pp=shiftP(p,-1),pt=totalsP(pp);
-  const lines=[];lines.push(t("Spent {a} of {b}",{a:fmt(tt.expense),b:fmt(bt)})+(bt?" ("+Math.round(tt.expense/bt*100)+" %)":"")+".");
+  const sb=bt-potBudget(s),sx=tt.expense-tt.pot,ps=potSet();
+  const lines=[];lines.push(t("Spent {a} of {b}",{a:fmt(sx),b:fmt(sb)})+(sb?" ("+Math.round(sx/sb*100)+" %)":"")+".");
+  if(tt.pot)lines.push(t("From your pots: {x}.",{x:fmt(tt.pot)}));
   if(tg)lines.push(t("Saved and invested {a} of the {b} target.",{a:fmt(tt.saving),b:fmt(tg)}));
-  const diffs=EXP_CATS.map(c=>({c,d:(tt.byCat["expense:"+c]||0)-s.budget[c]})).filter(x=>s.budget[x.c]||x.d>0);
+  const diffs=EXP_CATS.filter(c=>!ps.has(c)).map(c=>({c,d:(tt.byCat["expense:"+c]||0)-s.budget[c]})).filter(x=>s.budget[x.c]||x.d>0);
   const over=diffs.filter(x=>x.d>0).sort((a,b)=>b.d-a.d).slice(0,2),under=diffs.filter(x=>x.d<0).sort((a,b)=>a.d-b.d).slice(0,2);
   if(over.length)lines.push(t("Over budget: {l}.",{l:over.map(x=>t("{c} by {x}",{c:x.c,x:fmt(x.d)})).join(", ")}));
   if(under.length)lines.push(t("Under budget: {l}.",{l:under.map(x=>t("{c} by {x}",{c:x.c,x:fmt(-x.d)})).join(", ")}));
-  if(pt.expense)lines.push(t(tt.expense>=pt.expense?"Spending up {n} % on the period before.":"Spending down {n} % on the period before.",{n:Math.abs(Math.round((tt.expense/pt.expense-1)*100))}));
+  {const px=pt.expense-pt.pot;if(px>0)lines.push(t(sx>=px?"Spending up {n} % on the period before.":"Spending down {n} % on the period before.",{n:Math.abs(Math.round((sx/px-1)*100))}))}
   if(tt.oneoff)lines.push(t("One-off costs: {x}.",{x:fmt(tt.oneoff)}));
   return lines;
 }

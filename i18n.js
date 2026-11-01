@@ -1084,6 +1084,8 @@ window.KC_CS={
 "Save: {a} counted, {b} left out": "Uložit: {a} započteno, {b} vynecháno",
 "Some money came in that isn't your regular pay. Tick a payment to count it in your monthly income. Leave it unticked to leave it out: it stays in your records but not in the total.": "Přišly peníze, které nejsou vaší pravidelnou výplatou. Zaškrtněte platbu, kterou chcete započítat do měsíčního příjmu. Nezaškrtnutá se vynechá: zůstane v záznamech, ale ne v součtu.",
 "These aren't your regular pay. Tick a payment to count it in your monthly income. Leave it unticked to leave it out: it stays in your records but not in the total.": "Toto nejsou vaše pravidelné výplaty. Zaškrtněte platbu, kterou chcete započítat do měsíčního příjmu. Nezaškrtnutá se vynechá: zůstane v záznamech, ale ne v součtu.",
-"Kč Ledger · version 24.5": "Kč Ledger · verze 24.5"
+"{x} in your pots": "{x} ve vašich kasičkách",
+"From your pots: {x}.": "Z vašich kasiček: {x}.",
+"Kč Ledger · version 25": "Kč Ledger · verze 25"
 };
 window.KC_PL={"item": {"en": ["item", "items"], "cs": ["položka", "položky", "položek"]}, "own account": {"en": ["own account", "own accounts"], "cs": ["vlastní účet", "vlastní účty", "vlastních účtů"]}, "day": {"en": ["day", "days"], "cs": ["den", "dny", "dní"]}, "payment": {"en": ["payment", "payments"], "cs": ["platba", "platby", "plateb"]}, "image": {"en": ["image", "images"], "cs": ["obrázek", "obrázky", "obrázků"]}, "entry": {"en": ["entry", "entries"], "cs": ["položka", "položky", "položek"]}, "transaction": {"en": ["transaction", "transactions"], "cs": ["transakce", "transakce", "transakcí"]}, "category": {"en": ["category", "categories"], "cs": ["kategorie", "kategorie", "kategorií"]}};
