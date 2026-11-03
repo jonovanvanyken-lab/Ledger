@@ -1086,11 +1086,19 @@ window.KC_CS={
 "These aren't your regular pay. Tick a payment to count it in your monthly income. Leave it unticked to leave it out: it stays in your records but not in the total.": "Toto nejsou vaše pravidelné výplaty. Zaškrtněte platbu, kterou chcete započítat do měsíčního příjmu. Nezaškrtnutá se vynechá: zůstane v záznamech, ale ne v součtu.",
 "{x} in your pots": "{x} ve vašich kasičkách",
 "From your pots: {x}.": "Z vašich kasiček: {x}.",
-"Kč Ledger · version 26": "Kč Ledger · verze 26",
+"Copied. Opening your shortcut…": "Zkopírováno. Otevírám zkratku…",
+"Copied. Run your widget shortcut to update it.": "Zkopírováno. Spusťte zkratku widgetu a aktualizuje se.",
+"Couldn't copy. Try again.": "Nepodařilo se zkopírovat. Zkuste to znovu.",
 "Home screen widget": "Widget na ploše",
 "Shortcut name": "Název zkratky",
 "Open the shortcut after copying": "Po zkopírování otevřít zkratku",
 "Update widget": "Aktualizovat widget",
-"Shows left to spend, today's allowance and savings on your home screen with the free Scriptable app. Tap Update widget: a small summary is copied and your shortcut saves it for the widget. Nothing is uploaded.": "Zobrazí na ploše, kolik zbývá utratit, dnešní limit a úspory, pomocí bezplatné aplikace Scriptable. Klepněte na Aktualizovat widget: zkopíruje se krátký souhrn a vaše zkratka ho uloží pro widget. Nic se nenahrává."
+"Kč Ledger · version 27": "Kč Ledger · verze 27",
+"Update automatically through sync": "Aktualizovat automaticky přes synchronizaci",
+"Turn on sync first to use automatic updates.": "Pro automatické aktualizace nejdřív zapněte synchronizaci.",
+"Copy widget key": "Kopírovat klíč widgetu",
+"Copy repository name": "Kopírovat název repozitáře",
+"Update by hand instead": "Aktualizovat ručně",
+"Shows left to spend, today's allowance and savings on your home screen with the free Scriptable app.": "Zobrazí na ploše, kolik zbývá utratit, dnešní limit a úspory, pomocí bezplatné aplikace Scriptable."
 };
 window.KC_PL={"item": {"en": ["item", "items"], "cs": ["položka", "položky", "položek"]}, "own account": {"en": ["own account", "own accounts"], "cs": ["vlastní účet", "vlastní účty", "vlastních účtů"]}, "day": {"en": ["day", "days"], "cs": ["den", "dny", "dní"]}, "payment": {"en": ["payment", "payments"], "cs": ["platba", "platby", "plateb"]}, "image": {"en": ["image", "images"], "cs": ["obrázek", "obrázky", "obrázků"]}, "entry": {"en": ["entry", "entries"], "cs": ["položka", "položky", "položek"]}, "transaction": {"en": ["transaction", "transactions"], "cs": ["transakce", "transakce", "transakcí"]}, "category": {"en": ["category", "categories"], "cs": ["kategorie", "kategorie", "kategorií"]}};

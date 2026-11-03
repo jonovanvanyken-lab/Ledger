@@ -3,7 +3,7 @@
    A random data key encrypts the ledger and images. That key is stored wrapped by your passcode
    (PBKDF2-SHA256, 600k rounds → AES-GCM) and, if you turn it on, by a Face ID passkey (WebAuthn PRF → HKDF → AES-GCM). */
 "use strict";
-const ITER=600000,DAY=864e5,APP_VERSION=26;
+const ITER=600000,DAY=864e5,APP_VERSION=27;
 const $=id=>document.getElementById(id);
 const te=new TextEncoder(),td=new TextDecoder();
 const b64=buf=>{let s="";const b=buf instanceof Uint8Array?buf:new Uint8Array(buf);for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)};
@@ -1430,7 +1430,7 @@ async function syncNow(manual){
       // anything changed on this device while the sync was talking to GitHub (an Apple Pay purchase, an edit) is kept and sent next time
       const nowLocal=stripDevice(docs);let fin=merged.docs,late=false;if(canon(nowLocal)!==canon(local)){fin=mergeDocs(local,nowLocal,merged.docs).docs;late=true}
       const dev=docs._device;docs=fin;docs._device=dev;dev.base=JSON.parse(JSON.stringify(merged.docs));dev.sync.last=Date.now();delete dev.sync.error;await runAuto();await migrate();applyCats();fillFilterCats();fillCats();
-      await persist();render();setSyncUI();if(late)setTimeout(()=>syncSoon(1000),0);
+      await persist();render();setSyncUI();if(late)setTimeout(()=>syncSoon(1000),0);widgetPush(cfg);
       if(manual||merged.conflicts||passChanged){h.className="hint ok";h.textContent=t("Synced.")+(merged.conflicts?" "+t("{n} {e} edited on both devices; both versions are kept and marked.",{n:merged.conflicts,e:pl(merged.conflicts,"entry")}):"")+(passChanged?" "+t("Your passcode was changed on another device, so use that one from now on."):"")}
       return;
     }
@@ -2625,7 +2625,25 @@ function widgetSummary(){
   return {v:1,app:"Kc Ledger",updated:new Date().toISOString(),cur:baseCur(),period:pLabel(p),from:p.s,to:p.e,daysLeft:hc.daysLeft||0,
     spent:Math.round(sx),budget:Math.round(sb),left:Math.round(sb-sx),perDay:Math.round(hc.perDay||0),spentToday:Math.round(hc.spentToday||0),
     health:hc.r==null?null:Math.round(hc.r*100)/100,saved:Math.round(tt.saving),target:Math.round(targetTotal(s)),pots:Math.round(potsLeft(p)),
-    income:Math.round(tt.income)}}
+    income:Math.round(tt.income),pool:Math.round(hc.left||0),day:todayIso()}}
+
+// automatic: each sync also writes widget.json (AES-GCM, separate widget key kept in the encrypted, synced settings)
+const b64u=b=>b64(b).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+function widgetKeyStr(){const st=ensureSettings();if(!st.widgetKey){st.widgetKey=b64u(crypto.getRandomValues(new Uint8Array(32)))}return st.widgetKey}
+async function widgetSeal(obj){
+  const raw=unb64(widgetKeyStr().replace(/-/g,"+").replace(/_/g,"/")+"=".repeat((4-widgetKeyStr().length%4)%4));
+  const k=await crypto.subtle.importKey("raw",raw,"AES-GCM",false,["encrypt"]);const iv=crypto.getRandomValues(new Uint8Array(12));
+  const ct=await crypto.subtle.encrypt({name:"AES-GCM",iv},k,te.encode(JSON.stringify(obj)));return {kind:"kc-widget",v:1,iv:b64(iv),ct:b64(ct)}}
+let widgetBusy=false;
+async function widgetPush(cfg){
+  const st=ensureSettings();if(!st.widgetAuto||!cfg||widgetBusy)return;widgetBusy=true;
+  try{const sum=widgetSummary();const sig=JSON.stringify(Object.assign({},sum,{updated:0}));const dev=docs._device=docs._device||{};
+    if(dev.widgetSig===sig&&Date.now()-(dev.widgetPut||0)<6*3600e3)return;
+    const cur=await gh(cfg,"GET","/contents/widget.json");const rec=await widgetSeal(sum);
+    await gh(cfg,"PUT","/contents/widget.json",Object.assign({message:"Kč Ledger widget",content:b64(te.encode(JSON.stringify(rec)))},cur&&cur.sha?{sha:cur.sha}:{}));
+    dev.widgetSig=sig;dev.widgetPut=Date.now();st.widgetAt=Date.now();await persist()}
+  catch(e){(docs._device=docs._device||{}).widgetErr=String(e.status||e.message||e)}
+  finally{widgetBusy=false}}
 $("widgetBtn").addEventListener("click",async()=>{
   const tx=JSON.stringify(widgetSummary());
   try{await navigator.clipboard.writeText(tx)}catch(_){toast(t("Couldn't copy. Try again."));return}
@@ -2633,7 +2651,12 @@ $("widgetBtn").addEventListener("click",async()=>{
   const name=($("widgetShortcut").value||"KC Widget").trim();st.widgetName=name;
   if($("widgetOpen").checked){toast(t("Copied. Opening your shortcut…"));setTimeout(()=>{location.href="shortcuts://run-shortcut?name="+encodeURIComponent(name)},300)}
   else toast(t("Copied. Run your widget shortcut to update it."))});
-function widgetInit(){const st=ensureSettings();$("widgetShortcut").value=st.widgetName||"KC Widget";$("widgetOpen").checked=st.widgetOpenSc!==false;
+$("widgetAuto").addEventListener("change",async()=>{const st=ensureSettings();st.widgetAuto=$("widgetAuto").checked;if(st.widgetAuto)widgetKeyStr();await persist();widgetUI();if(st.widgetAuto)syncSoon(300)});
+$("widgetKeyBtn").addEventListener("click",async()=>{try{await navigator.clipboard.writeText(widgetKeyStr());toast(t("Widget key copied. Paste it into Scriptable."))}catch(_){toast(t("Couldn't copy. Try again."))}});
+$("widgetRepoBtn").addEventListener("click",async()=>{const c=syncCfg();if(!c)return;try{await navigator.clipboard.writeText(c.repo);toast(t("Copied"))}catch(_){toast(t("Couldn't copy. Try again."))}});
+function widgetUI(){const st=ensureSettings(),c=syncCfg();$("widgetAuto").checked=!!st.widgetAuto;$("widgetAuto").disabled=!c;$("widgetAutoNote").hidden=!!c;
+  $("widgetAutoBox").hidden=!(st.widgetAuto&&c);if(c)$("widgetRepo").textContent=c.repo}
+function widgetInit(){widgetUI();const st=ensureSettings();$("widgetShortcut").value=st.widgetName||"KC Widget";$("widgetOpen").checked=st.widgetOpenSc!==false;
   $("widgetOpen").addEventListener("change",()=>{ensureSettings().widgetOpenSc=$("widgetOpen").checked;persist()})}
 
 /* ---------- start ---------- */
