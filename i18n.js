@@ -1093,12 +1093,14 @@ window.KC_CS={
 "Shortcut name": "Název zkratky",
 "Open the shortcut after copying": "Po zkopírování otevřít zkratku",
 "Update widget": "Aktualizovat widget",
-"Kč Ledger · version 27": "Kč Ledger · verze 27",
+"Widget key copied. Paste it into Scriptable.": "Klíč widgetu zkopírován. Vložte ho do Scriptable.",
 "Update automatically through sync": "Aktualizovat automaticky přes synchronizaci",
 "Turn on sync first to use automatic updates.": "Pro automatické aktualizace nejdřív zapněte synchronizaci.",
 "Copy widget key": "Kopírovat klíč widgetu",
 "Copy repository name": "Kopírovat název repozitáře",
 "Update by hand instead": "Aktualizovat ručně",
-"Shows left to spend, today's allowance and savings on your home screen with the free Scriptable app.": "Zobrazí na ploše, kolik zbývá utratit, dnešní limit a úspory, pomocí bezplatné aplikace Scriptable."
+"Shows left to spend, today's allowance and savings on your home screen with the free Scriptable app.": "Zobrazí na ploše, kolik zbývá utratit, dnešní limit a úspory, pomocí bezplatné aplikace Scriptable.",
+"Kč Ledger · version 27.1": "Kč Ledger · verze 27.1",
+"Send to widget now": "Odeslat do widgetu"
 };
 window.KC_PL={"item": {"en": ["item", "items"], "cs": ["položka", "položky", "položek"]}, "own account": {"en": ["own account", "own accounts"], "cs": ["vlastní účet", "vlastní účty", "vlastních účtů"]}, "day": {"en": ["day", "days"], "cs": ["den", "dny", "dní"]}, "payment": {"en": ["payment", "payments"], "cs": ["platba", "platby", "plateb"]}, "image": {"en": ["image", "images"], "cs": ["obrázek", "obrázky", "obrázků"]}, "entry": {"en": ["entry", "entries"], "cs": ["položka", "položky", "položek"]}, "transaction": {"en": ["transaction", "transactions"], "cs": ["transakce", "transakce", "transakcí"]}, "category": {"en": ["category", "categories"], "cs": ["kategorie", "kategorie", "kategorií"]}};

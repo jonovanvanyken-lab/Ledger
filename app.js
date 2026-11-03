@@ -3,7 +3,7 @@
    A random data key encrypts the ledger and images. That key is stored wrapped by your passcode
    (PBKDF2-SHA256, 600k rounds → AES-GCM) and, if you turn it on, by a Face ID passkey (WebAuthn PRF → HKDF → AES-GCM). */
 "use strict";
-const ITER=600000,DAY=864e5,APP_VERSION=27;
+const ITER=600000,DAY=864e5,APP_VERSION=27.1;
 const $=id=>document.getElementById(id);
 const te=new TextEncoder(),td=new TextDecoder();
 const b64=buf=>{let s="";const b=buf instanceof Uint8Array?buf:new Uint8Array(buf);for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)};
@@ -2641,9 +2641,13 @@ async function widgetPush(cfg){
     if(dev.widgetSig===sig&&Date.now()-(dev.widgetPut||0)<6*3600e3)return;
     const cur=await gh(cfg,"GET","/contents/widget.json");const rec=await widgetSeal(sum);
     await gh(cfg,"PUT","/contents/widget.json",Object.assign({message:"Kč Ledger widget",content:b64(te.encode(JSON.stringify(rec)))},cur&&cur.sha?{sha:cur.sha}:{}));
-    dev.widgetSig=sig;dev.widgetPut=Date.now();st.widgetAt=Date.now();await persist()}
-  catch(e){(docs._device=docs._device||{}).widgetErr=String(e.status||e.message||e)}
-  finally{widgetBusy=false}}
+    dev.widgetSig=sig;dev.widgetPut=Date.now();delete dev.widgetErr;st.widgetAt=Date.now();await persist()}
+  catch(e){(docs._device=docs._device||{}).widgetErr=e.status?("GitHub "+e.status):String(e.message||e);await persist()}
+  finally{widgetBusy=false;widgetUI()}}
+async function widgetSendNow(){const c=syncCfg();const h=$("widgetHint");if(!c){h.className="hint err";h.textContent=t("Turn on sync first to use automatic updates.");return}
+  const st=ensureSettings();if(!st.widgetAuto){st.widgetAuto=true;widgetKeyStr()}const dev=docs._device=docs._device||{};delete dev.widgetSig;
+  h.className="hint";h.textContent=t("Sending…");await widgetPush(c);
+  if(dev.widgetErr){h.className="hint err";h.textContent=t("Couldn't save the widget file: {e}",{e:dev.widgetErr})}else{h.className="hint ok";h.textContent=t("Widget file saved. Preview the widget in Scriptable now.")}}
 $("widgetBtn").addEventListener("click",async()=>{
   const tx=JSON.stringify(widgetSummary());
   try{await navigator.clipboard.writeText(tx)}catch(_){toast(t("Couldn't copy. Try again."));return}
@@ -2655,7 +2659,9 @@ $("widgetAuto").addEventListener("change",async()=>{const st=ensureSettings();st
 $("widgetKeyBtn").addEventListener("click",async()=>{try{await navigator.clipboard.writeText(widgetKeyStr());toast(t("Widget key copied. Paste it into Scriptable."))}catch(_){toast(t("Couldn't copy. Try again."))}});
 $("widgetRepoBtn").addEventListener("click",async()=>{const c=syncCfg();if(!c)return;try{await navigator.clipboard.writeText(c.repo);toast(t("Copied"))}catch(_){toast(t("Couldn't copy. Try again."))}});
 function widgetUI(){const st=ensureSettings(),c=syncCfg();$("widgetAuto").checked=!!st.widgetAuto;$("widgetAuto").disabled=!c;$("widgetAutoNote").hidden=!!c;
-  $("widgetAutoBox").hidden=!(st.widgetAuto&&c);if(c)$("widgetRepo").textContent=c.repo}
+  $("widgetAutoBox").hidden=!(st.widgetAuto&&c);if(c)$("widgetRepo").textContent=c.repo;
+  const dev=docs._device||{};const ws=$("widgetStatus");if(ws)ws.textContent=dev.widgetErr?t("Last try failed: {e}",{e:dev.widgetErr}):dev.widgetPut?t("Widget file last saved {d}",{d:new Date(dev.widgetPut).toLocaleString(LOC())}):t("Not saved yet.")}
+$("widgetSendBtn").addEventListener("click",widgetSendNow);
 function widgetInit(){widgetUI();const st=ensureSettings();$("widgetShortcut").value=st.widgetName||"KC Widget";$("widgetOpen").checked=st.widgetOpenSc!==false;
   $("widgetOpen").addEventListener("change",()=>{ensureSettings().widgetOpenSc=$("widgetOpen").checked;persist()})}
 
