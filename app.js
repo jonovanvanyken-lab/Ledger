@@ -3,7 +3,7 @@
    A random data key encrypts the ledger and images. That key is stored wrapped by your passcode
    (PBKDF2-SHA256, 600k rounds → AES-GCM) and, if you turn it on, by a Face ID passkey (WebAuthn PRF → HKDF → AES-GCM). */
 "use strict";
-const ITER=600000,DAY=864e5,APP_VERSION=25;
+const ITER=600000,DAY=864e5,APP_VERSION=26;
 const $=id=>document.getElementById(id);
 const te=new TextEncoder(),td=new TextDecoder();
 const b64=buf=>{let s="";const b=buf instanceof Uint8Array?buf:new Uint8Array(buf);for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)};
@@ -145,7 +145,7 @@ async function showApp(){
   $("wizard").hidden=true;$("app").hidden=false;cur=periodOfDate(new Date());$("fDate").value=defaultDate();
   if(docs.settings.hideOnOpen)setPrivate(true);
   if(await runAuto())await persist();
-  showTab("health");render();armIdle();updateRates(false);syncSoon(800);setTimeout(()=>payCheck(false),1200);setTimeout(()=>fundPrices(false),2500);setTimeout(askIncomeStartup,3000);
+  showTab("health");render();armIdle();updateRates(false);syncSoon(800);setTimeout(()=>payCheck(false),1200);setTimeout(()=>fundPrices(false),2500);setTimeout(askIncomeStartup,3000);widgetInit();
 }
 function lock(){
   try{showQuote()}catch(_){}
@@ -2001,7 +2001,7 @@ function fillSetSums(){const st=docs.settings||{};const set=(id,tx)=>{const e=$(
   set("secMoney",baseCur()+(cur2()&&cur2()!==baseCur()?" · "+cur2():""));
   set("secImport",(st.ownAccounts||[]).length?(st.ownAccounts.length+" "+pl(st.ownAccounts.length,"own account")):"");
   set("secApplePay",payCfg()?t("Automatic inbox on"):t("Off"));
-  set("secBackup",st.lastBackup?t("Last backup {d}",{d:dShort(iso(new Date(st.lastBackup)))}):t("No backup yet"));
+  set("secWidget",st.widgetAt?t("Updated {d}",{d:dShort(iso(new Date(st.widgetAt)))}):t("Not set up"));set("secBackup",st.lastBackup?t("Last backup {d}",{d:dShort(iso(new Date(st.lastBackup)))}):t("No backup yet"));
   set("secSecurity",keys&&keys.prf?t("Face ID on"):"");
   set("secProfile",(st.name?st.name+" · ":"")+(LANG==="cs"?"Čeština":"English"));
   const off=DISPLAY.reduce((a,[,l])=>a+l.filter(([k])=>!showOn(k)).length,0);set("secDisplay",off?t("{n} hidden",{n:off}):t("Everything shown"));
@@ -2616,6 +2616,25 @@ function face3dFrame(now){
   const moving=Math.abs(F3.vy)+Math.abs(F3.vp)>.0005||Math.abs(ty-F3.yaw)+Math.abs(tp-F3.pitch)>.002;if(moving||bouncing||F3.drag)face3dKick();
 }
 addEventListener("resize",()=>face3dKick());document.addEventListener("visibilitychange",()=>{if(!document.hidden)face3dKick()});
+
+/* ---------- home-screen widget: a small summary handed to Scriptable via the clipboard ---------- */
+// Nothing is uploaded: the summary is copied, an iOS Shortcut saves it to iCloud Drive/Scriptable, and the widget reads that file.
+function widgetSummary(){
+  const q=periodOfDate(new Date()),p=period(q.y,q.m),s=settings(),tt=totalsP(p),hc=healthCalc(p);
+  const sb=budgetTotal(s)-potBudget(s),sx=tt.expense-tt.pot;
+  return {v:1,app:"Kc Ledger",updated:new Date().toISOString(),cur:baseCur(),period:pLabel(p),from:p.s,to:p.e,daysLeft:hc.daysLeft||0,
+    spent:Math.round(sx),budget:Math.round(sb),left:Math.round(sb-sx),perDay:Math.round(hc.perDay||0),spentToday:Math.round(hc.spentToday||0),
+    health:hc.r==null?null:Math.round(hc.r*100)/100,saved:Math.round(tt.saving),target:Math.round(targetTotal(s)),pots:Math.round(potsLeft(p)),
+    income:Math.round(tt.income)}}
+$("widgetBtn").addEventListener("click",async()=>{
+  const tx=JSON.stringify(widgetSummary());
+  try{await navigator.clipboard.writeText(tx)}catch(_){toast(t("Couldn't copy. Try again."));return}
+  const st=ensureSettings();st.widgetAt=Date.now();persist();
+  const name=($("widgetShortcut").value||"KC Widget").trim();st.widgetName=name;
+  if($("widgetOpen").checked){toast(t("Copied. Opening your shortcut…"));setTimeout(()=>{location.href="shortcuts://run-shortcut?name="+encodeURIComponent(name)},300)}
+  else toast(t("Copied. Run your widget shortcut to update it."))});
+function widgetInit(){const st=ensureSettings();$("widgetShortcut").value=st.widgetName||"KC Widget";$("widgetOpen").checked=st.widgetOpenSc!==false;
+  $("widgetOpen").addEventListener("change",()=>{ensureSettings().widgetOpenSc=$("widgetOpen").checked;persist()})}
 
 /* ---------- start ---------- */
 let rz;addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(renderCharts,150)});

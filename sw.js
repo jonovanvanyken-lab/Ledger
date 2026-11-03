@@ -1,7 +1,7 @@
 // Offline support. The app's own code is always fetched fresh when online (network first),
 // so an old copy can never be mixed with a new one. Text recognition, PDF tools and icons are cache first.
-const VERSION = "kc-ledger-v25";
-const SHELL = ["./", "index.html", "app.css?v=25", "i18n.js?v=25", "import.js?v=25", "report.js?v=25", "app.js?v=25", "manifest.webmanifest"];
+const VERSION = "kc-ledger-v26";
+const SHELL = ["./", "index.html", "app.css?v=26", "i18n.js?v=26", "import.js?v=26", "report.js?v=26", "app.js?v=26", "manifest.webmanifest"];
 const STATIC = ["icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png", "icons/apple-touch-icon.png"];
 
 self.addEventListener("install", e => {

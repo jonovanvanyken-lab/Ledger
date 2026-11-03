@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="app.css?v=25">
+<link rel="stylesheet" href="app.css?v=26">
 <title>Kč Ledger</title>
 </head>
 <body>
@@ -39,7 +39,7 @@
       <p class="hint" id="lockHint"></p>
     </form>
     <figure class="lock-quote" id="lockQuote" hidden><blockquote id="lockQuoteText"></blockquote><figcaption id="lockQuoteBy"></figcaption></figure>
-    <p class="fine" id="lockVer">Kč Ledger · version 25</p>
+    <p class="fine" id="lockVer">Kč Ledger · version 26</p>
     <p class="fine" id="lockFine" hidden>Your entries are encrypted on this device. Nobody, including the app's host, can read them. There is no passcode reset: if you forget it, only a backup can bring your data back.</p>
   </div>
 </main>
@@ -468,6 +468,13 @@
 
     <h3 class="set-group">Your data</h3>
     <div class="set-list">
+    <details class="panel set-sec" id="secWidget">
+      <summary><span class="si"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="16" height="7" rx="2"/></svg></span><span class="sx"><h2>Home screen widget</h2><small class="ss" id="ss-secWidget"></small></span></summary>
+      <p class="small muted">Shows left to spend, today's allowance and savings on your home screen with the free Scriptable app. Tap Update widget: a small summary is copied and your shortcut saves it for the widget. Nothing is uploaded.</p>
+      <div class="field"><label class="label" for="widgetShortcut">Shortcut name</label><input id="widgetShortcut" maxlength="40" autocomplete="off"></div>
+      <label class="check" for="widgetOpen"><input type="checkbox" id="widgetOpen"> Open the shortcut after copying</label>
+      <div class="btnrow"><button class="primary" id="widgetBtn" type="button">Update widget</button></div>
+    </details>
     <details class="panel set-sec" id="secBackup">
       <summary><span class="si"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18a5 5 0 0 1-.6-10A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9z"/><path d="M12 11v6M9.5 13.5L12 11l2.5 2.5"/></svg></span><span class="sx"><h2>Backup</h2><small class="ss" id="ss-secBackup"></small></span></summary>
       <p class="small muted">Your data lives only on this device unless you turn on sync. Save an encrypted backup to your files now and then. It opens with your passcode. <span id="lastBackup"></span></p>
@@ -566,7 +573,7 @@
     </details>
     </div>
 
-    <p class="fine hfine">Kč Ledger · version 25</p>
+    <p class="fine hfine">Kč Ledger · version 26</p>
   </section>
 
   <nav class="tabbar" aria-label="Sections">
@@ -593,9 +600,9 @@
   <div class="viewer-bar"><button class="icon-btn" id="viewNext">Next image</button><span class="spacer"></span><button class="danger" id="viewDel">Remove image</button></div>
 </div>
 <div id="toast" class="toast" role="status" hidden></div>
-<script src="i18n.js?v=25"></script>
-<script src="import.js?v=25"></script>
-<script src="report.js?v=25"></script>
-<script src="app.js?v=25"></script>
+<script src="i18n.js?v=26"></script>
+<script src="import.js?v=26"></script>
+<script src="report.js?v=26"></script>
+<script src="app.js?v=26"></script>
 </body>
 </html>
