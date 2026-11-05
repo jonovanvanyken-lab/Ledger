@@ -3,7 +3,7 @@
    A random data key encrypts the ledger and images. That key is stored wrapped by your passcode
    (PBKDF2-SHA256, 600k rounds → AES-GCM) and, if you turn it on, by a Face ID passkey (WebAuthn PRF → HKDF → AES-GCM). */
 "use strict";
-const ITER=600000,DAY=864e5,APP_VERSION=27.1;
+const ITER=600000,DAY=864e5,APP_VERSION=27.2;
 const $=id=>document.getElementById(id);
 const te=new TextEncoder(),td=new TextDecoder();
 const b64=buf=>{let s="";const b=buf instanceof Uint8Array?buf:new Uint8Array(buf);for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)};
